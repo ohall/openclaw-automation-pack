@@ -1,0 +1,16 @@
+{
+  "name": "openclaw-automation-pack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pragmatic scripts for OpenClaw + Home Assistant ops.",
+  "scripts": {
+    "lint": "node --check scripts/*.mjs",
+    "hacs:update": "node scripts/ha-hacs-update.mjs",
+    "hubitat:disable-orphans": "node scripts/ha-disable-orphans.mjs",
+    "ha:logscan": "bash scripts/ha-log-scan.sh"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
