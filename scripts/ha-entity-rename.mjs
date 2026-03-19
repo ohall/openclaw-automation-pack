@@ -1,0 +1,191 @@
+#!/usr/bin/env node
+
+/**
+ * Safely rename Home Assistant entity IDs with backup/export functionality.
+ *
+ * This script helps rename entities while:
+ * - Creating backups of current entity registry
+ * - Validating the rename operation
+ * - Supporting dry-run mode for safety
+ * - Exporting current entity info for recovery
+ *
+ * Usage:
+ *   node scripts/ha-entity-rename.mjs --from old_entity --to new_entity [--dry-run] [--backup-dir ./backups]
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { loadEnvFile, requireKeys } from './_env.mjs';
+
+function printHelp() {
+  console.log(`Usage: node ha-entity-rename.mjs --from <old_entity> --to <new_entity> [options]
+
+Options:
+  --from <entity_id>    Source entity ID to rename (required)
+  --to <entity_id>      Target entity ID (required)
+  --dry-run            Show what would be done without making changes
+  --backup-dir <dir>   Directory for backups (default: ./backups)
+  --help               Show this help message
+
+Examples:
+  node ha-entity-rename.mjs --from sensor.old_temp --to sensor.new_temp --dry-run
+  node ha-entity-rename.mjs --from light.kitchen --to light.kitchen_main --backup-dir /tmp/ha-backups
+`);
+}
+
+async function createBackup(baseUrl, token, backupDir) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupFile = path.join(backupDir, `entity-registry-${timestamp}.json`);
+  
+  // Ensure backup directory exists
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+
+  // Export current entity registry
+  const res = await fetch(`${baseUrl}/api/config/entity_registry/list`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  
+  if (!res.ok) {
+    throw new Error(`Failed to get entity registry: ${res.status}`);
+  }
+  
+  const entities = await res.json();
+  fs.writeFileSync(backupFile, JSON.stringify(entities, null, 2));
+  
+  console.log(`[BACKUP] Created backup: ${backupFile}`);
+  return backupFile;
+}
+
+async function getEntityInfo(baseUrl, token, entityId) {
+  const res = await fetch(`${baseUrl}/api/config/entity_registry/list`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  
+  if (!res.ok) {
+    throw new Error(`Failed to get entity registry: ${res.status}`);
+  }
+  
+  const entities = await res.json();
+  return entities.find(e => e.entity_id === entityId);
+}
+
+async function updateEntityId(baseUrl, token, oldEntityId, newEntityId, dryRun = false) {
+  if (dryRun) {
+    console.log(`[DRY-RUN] Would rename ${oldEntityId} -> ${newEntityId}`);
+    return;
+  }
+
+  const res = await fetch(`${baseUrl}/api/config/entity_registry/update/${oldEntityId}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      entity_id: newEntityId,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to rename entity: ${res.status} ${text}`);
+  }
+
+  console.log(`[SUCCESS] Renamed ${oldEntityId} -> ${newEntityId}`);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  
+  if (args.includes('--help')) {
+    printHelp();
+    return;
+  }
+
+  // Parse command line arguments
+  let fromEntity = null;
+  let toEntity = null;
+  let dryRun = false;
+  let backupDir = './backups';
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--from':
+        fromEntity = args[++i];
+        break;
+      case '--to':
+        toEntity = args[++i];
+        break;
+      case '--dry-run':
+        dryRun = true;
+        break;
+      case '--backup-dir':
+        backupDir = args[++i];
+        break;
+      default:
+        if (args[i].startsWith('--')) {
+          console.error(`[ERROR] Unknown option: ${args[i]}`);
+          process.exit(1);
+        }
+    }
+  }
+
+  if (!fromEntity || !toEntity) {
+    console.error('[ERROR] Both --from and --to entity IDs are required');
+    printHelp();
+    process.exit(1);
+  }
+
+  const env = loadEnvFile(process.env.HA_ENV_FILE);
+  requireKeys(env, ['HA_BASE_URL', 'HA_LONG_LIVED_ACCESS_TOKEN']);
+
+  const baseUrl = env.HA_BASE_URL.replace(/\/$/, '');
+  const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
+
+  try {
+    // Validate source entity exists
+    const sourceEntity = await getEntityInfo(baseUrl, token, fromEntity);
+    if (!sourceEntity) {
+      console.error(`[ERROR] Source entity not found: ${fromEntity}`);
+      process.exit(1);
+    }
+
+    // Check if target entity already exists
+    const targetEntity = await getEntityInfo(baseUrl, token, toEntity);
+    if (targetEntity) {
+      console.error(`[ERROR] Target entity already exists: ${toEntity}`);
+      process.exit(1);
+    }
+
+    console.log(`[INFO] Source entity: ${fromEntity}`);
+    console.log(`[INFO] Platform: ${sourceEntity.platform}`);
+    console.log(`[INFO] Device Class: ${sourceEntity.device_class || 'None'}`);
+    console.log(`[INFO] Name: ${sourceEntity.name || 'None'}`);
+
+    if (!dryRun) {
+      // Create backup before making changes
+      await createBackup(baseUrl, token, backupDir);
+    }
+
+    // Perform the rename
+    await updateEntityId(baseUrl, token, fromEntity, toEntity, dryRun);
+
+    if (dryRun) {
+      console.log('\n[DRY-RUN] No changes made. Remove --dry-run to apply changes.');
+    } else {
+      console.log('\n[SUCCESS] Entity rename completed successfully.');
+      console.log('[NOTE] You may need to restart Home Assistant for all changes to take effect.');
+    }
+
+  } catch (error) {
+    console.error(`[ERROR] ${error.message}`);
+    process.exit(1);
+  }
+}
+
+main().catch((e) => {
+  console.error(e?.stack || String(e));
+  process.exit(1);
+});
