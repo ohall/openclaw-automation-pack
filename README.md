@@ -41,3 +41,10 @@ These scripts:
 ## License
 
 MIT
+
+## Example Usage
+
+```bash
+# Run HACS update
+node scripts/ha-hacs-update.mjs
+```
