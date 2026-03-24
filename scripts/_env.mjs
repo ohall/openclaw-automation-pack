@@ -66,4 +66,4 @@ export function requireKeys(env, keys) {
  */
 export function httpToWs(url) {
   return url.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
-}
+}// TODO: Add file existence check
