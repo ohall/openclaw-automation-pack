@@ -20,6 +20,8 @@ Create a credentials file on the machine running these scripts:
 
 - `~/.openclaw/credentials/homeassistant-api.env`
 
+You can also place a `.env` file in the current working directory; it will be used if the default file is missing.
+
 ```bash
 HA_BASE_URL=http://homeassistant.local:8123
 HA_LONG_LIVED_ACCESS_TOKEN=...
