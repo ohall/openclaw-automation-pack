@@ -3,23 +3,43 @@ import os from 'node:os';
 import path from 'node:path';
 
 /**
- * Load environment variables from a file with improved error handling
+ * Load environment variables from a file with improved error handling.
+ * Supports both homeassistant-api.env and .env formats.
  * @param {string} [filePath] - Path to the env file (optional)
  * @returns {Object} Parsed environment variables
  */
 export function loadEnvFile(filePath) {
-  const p = filePath
-    ? filePath
-    : path.join(os.homedir(), '.openclaw', 'credentials', 'homeassistant-api.env');
+  // If explicit path given, use it
+  if (filePath) {
+    return loadEnvFromFile(filePath);
+  }
 
-  try {
-    if (!fs.existsSync(p)) {
-      console.error(`[ERROR] Missing env file: ${p}`);
-      process.exit(1);
+  // Default search paths (in order)
+  const defaultPaths = [
+    path.join(os.homedir(), '.openclaw', 'credentials', 'homeassistant-api.env'),
+    path.join(process.cwd(), '.env')
+  ];
+
+  for (const p of defaultPaths) {
+    if (fs.existsSync(p)) {
+      return loadEnvFromFile(p);
     }
+  }
 
+  console.error(`[ERROR] No environment file found. Tried:`);
+  defaultPaths.forEach(p => console.error(`  ${p}`));
+  process.exit(1);
+}
+
+/**
+ * Internal helper to load from a specific file
+ * @param {string} filePath - Path to the env file
+ * @returns {Object} Parsed environment variables
+ */
+function loadEnvFromFile(filePath) {
+  try {
     const out = {};
-    const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
+    const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
     
     for (const line of lines) {
       const trimmed = line.trim();
@@ -35,7 +55,7 @@ export function loadEnvFile(filePath) {
     }
 
     if (Object.keys(out).length === 0) {
-      console.error(`[ERROR] No environment variables found in ${p}`);
+      console.error(`[ERROR] No environment variables found in ${filePath}`);
       process.exit(2);
     }
 

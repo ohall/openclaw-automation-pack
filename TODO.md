@@ -14,7 +14,7 @@ Add GitHub Actions: node --check + basic unit tests.
 Add basic tests for _env.mjs parsing.
 Add docs: "How to create HA LLAT" and "Safety/rollback".
 Add scripts/ha-disable-orphans.mjs dry-run mode and allowlist/denylist.
-Add support for .env format in addition to homeassistant-api.env.
+✅ Add support for .env format in addition to homeassistant-api.env.
 Add a Makefile for common commands.
 
 Add scripts/ha-backup-config.mjs to export critical YAML/files before mutating actions.
