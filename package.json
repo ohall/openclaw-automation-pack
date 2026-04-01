@@ -8,6 +8,7 @@
     "lint": "node --check scripts/*.mjs",
     "test": "node --test test/*.mjs",
     "hacs:update": "node scripts/ha-hacs-update.mjs",
+    "ha:scan-updates": "node scripts/ha-scan-update-entities.mjs",
     "hubitat:disable-orphans": "node scripts/ha-disable-orphans.mjs",
     "ha:logscan": "bash scripts/ha-log-scan.sh"
   },
