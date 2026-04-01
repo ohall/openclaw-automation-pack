@@ -11,6 +11,7 @@ This repo is meant to grow over time with small, real improvements.
 ## Contents
 
 - `scripts/ha-hacs-update.mjs` — trigger updates for `update.*` entities and restart HA Core
+- `scripts/ha-scan-update-entities.mjs` — scan for update entities and report pending updates (JSON)
 - `scripts/ha-disable-orphans.mjs` — disable entity-registry entries no longer exported by Hubitat Maker API
 - `scripts/ha-log-scan.sh` — extract actionable errors from HA logs
 
@@ -49,4 +50,13 @@ MIT
 ```bash
 # Run HACS update
 node scripts/ha-hacs-update.mjs
+
+# Scan for pending updates
+node scripts/ha-scan-update-entities.mjs
+
+# Scan with verbose output
+node scripts/ha-scan-update-entities.mjs --verbose
+
+# Filter JSON output with jq
+node scripts/ha-scan-update-entities.mjs | jq '.entities[] | select(.state == "on")'
 ```
