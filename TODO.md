@@ -9,7 +9,7 @@ Pick one small item per run; keep commits focused.
 ✅ Add scripts/ha-entity-rename.mjs helper for safe entity_id renames (API) with backup/export.
 ✅ Add scripts/ha-restart-and-wait.mjs utility (restart core, wait for /api/ to respond).
 ✅ Improve ha-hacs-update.mjs: optional auto-restart, optional wait-for-healthy, better reporting.
-Add scripts/ha-scan-update-entities.mjs to list pending updates (JSON report).
+✅ Add scripts/ha-scan-update-entities.mjs to list pending updates (JSON report).
 Add GitHub Actions: node --check + basic unit tests.
 ✅ Add basic tests for _env.mjs parsing.
 Add docs: "How to create HA LLAT" and "Safety/rollback".
