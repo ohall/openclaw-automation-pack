@@ -17,7 +17,7 @@ Pick one small item per run; keep commits focused.
 ✅ Add support for .env format in addition to homeassistant-api.env.
 ✅ Add a Makefile for common commands.
 
-Add scripts/ha-backup-config.mjs to export critical YAML/files before mutating actions.
+✅ Add scripts/ha-backup-config.mjs to export critical YAML/files before mutating actions.
 Add scripts/ha-validate-config.mjs wrapper for config check before restart.
 Add --dry-run support consistently across all mutating scripts.
 Add --json output mode consistently across all scripts.
