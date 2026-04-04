@@ -7,9 +7,10 @@
  * - Triggers a Core restart via the API
  * - Polls the /api/ endpoint until it responds (indicating HA is back up)
  * - Configurable timeout and poll interval
+ * - Supports dry-run mode for safety
  *
  * Usage:
- *   node scripts/ha-restart-and-wait.mjs [--timeout 300] [--interval 5]
+ *   node scripts/ha-restart-and-wait.mjs [--dry-run] [--timeout 300] [--interval 5]
  */
 
 import { loadEnvFile, requireKeys } from './_env.mjs';
@@ -22,17 +23,25 @@ function printHelp() {
   console.log(`Usage: node ha-restart-and-wait.mjs [options]
 
 Options:
-  --timeout <seconds>  Maximum time to wait for HA to come back (default: 300)
+  --dry-run           Show what would be done without actually restarting
+  --timeout <seconds> Maximum time to wait for HA to come back (default: 300)
   --interval <seconds> Polling interval in seconds (default: 5)
-  --help               Show this help message
+  --help              Show this help message
 
 Examples:
   node ha-restart-and-wait.mjs
   node ha-restart-and-wait.mjs --timeout 600 --interval 10
+  node ha-restart-and-wait.mjs --dry-run
 `);
 }
 
-async function restartHomeAssistant(baseUrl, token) {
+async function restartHomeAssistant(baseUrl, token, dryRun = false) {
+  if (dryRun) {
+    console.log('[DRY-RUN] Would send restart command to Home Assistant');
+    console.log(`[DRY-RUN] Endpoint: ${baseUrl}/api/services/homeassistant/restart`);
+    return;
+  }
+
   const res = await fetch(`${baseUrl}/api/services/homeassistant/restart`, {
     method: 'POST',
     headers: {
@@ -103,11 +112,15 @@ async function main() {
   }
 
   // Parse command line arguments
+  let dryRun = false;
   let timeoutSec = 300;
   let intervalSec = 5;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
+      case '--dry-run':
+        dryRun = true;
+        break;
       case '--timeout':
         timeoutSec = parseInt(args[++i], 10);
         if (isNaN(timeoutSec) || timeoutSec < 1) {
@@ -137,8 +150,19 @@ async function main() {
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
 
   try {
+    if (dryRun) {
+      console.log('[DRY-RUN] ====== Home Assistant Restart (Dry Run) ======\n');
+      console.log(`[DRY-RUN] Would send restart command to: ${baseUrl}/api/services/homeassistant/restart`);
+      console.log(`[DRY-RUN] Would wait 10s for restart to initiate...`);
+      console.log(`[DRY-RUN] Would then wait up to ${timeoutSec}s for HA to come back online`);
+      console.log(`[DRY-RUN] Would poll every ${intervalSec}s`);
+      console.log(`\n[DRY-RUN] No actual restart would be performed.`);
+      console.log('\n[DRY-RUN] ====== Dry Run Complete ======');
+      return;
+    }
+
     // Trigger restart
-    await restartHomeAssistant(baseUrl, token);
+    await restartHomeAssistant(baseUrl, token, dryRun);
 
     // Wait for restart to begin (give HA a moment to actually start shutting down)
     console.log('[INFO] Waiting 10s for restart to initiate...');
