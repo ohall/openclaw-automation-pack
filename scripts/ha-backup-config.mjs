@@ -7,7 +7,7 @@
  * Useful to run before making changes that could potentially break the system.
  *
  * Usage:
- *   node scripts/ha-backup-config.mjs [--dry-run] [--output-dir <path>] [--help]
+ *   node scripts/ha-backup-config.mjs [--dry-run] [--output-dir <path>] [--json] [--help]
  */
 
 import { loadEnvFile, requireKeys } from './_env.mjs';
@@ -21,6 +21,7 @@ function printHelp() {
 Options:
   --dry-run             Show what would be backed up without creating files
   --output-dir <path>   Directory to store backups (default: ./backups/YYYY-MM-DD_HH-MM-SS)
+  --json                Output results in JSON format for machine parsing
   --help                Show this help message
 
 Environment variables:
@@ -35,6 +36,9 @@ Examples:
   
   # Specify custom output directory
   node ha-backup-config.mjs --output-dir ~/ha-backups/
+  
+  # Output in JSON format
+  node ha-backup-config.mjs --json
 `);
 }
 
@@ -43,7 +47,8 @@ function parseArgs() {
   const options = {
     dryRun: false,
     outputDir: null,
-    help: false
+    help: false,
+    jsonOutput: false
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -51,6 +56,8 @@ function parseArgs() {
     
     if (arg === '--dry-run') {
       options.dryRun = true;
+    } else if (arg === '--json') {
+      options.jsonOutput = true;
     } else if (arg === '--output-dir' || arg === '-o') {
       if (i + 1 < args.length) {
         options.outputDir = args[i + 1];
@@ -109,10 +116,12 @@ async function fetchWithAuth(url, token, options = {}) {
 async function runBackup(env, options) {
   const timestamp = generateTimestamp();
   const outputDir = options.outputDir || process.cwd();
-  const backupDir = options.dryRun ? '(dry-run) would create backup directory' : 
+  const backupDir = options.dryRun ? null : 
     ensureDirectory(path.join(outputDir, `ha-backup-${timestamp}`));
 
-  console.log(`[INFO] Starting backup to: ${backupDir}`);
+  if (!options.jsonOutput) {
+    console.log(`[INFO] Starting backup to: ${backupDir || '(dry-run) would create backup directory'}`);
+  }
   
   const baseUrl = env.HA_BASE_URL;
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
@@ -164,11 +173,21 @@ async function runBackup(env, options) {
 
   for (const endpoint of endpoints) {
     try {
-      console.log(`[INFO] Backing up ${endpoint.name}...`);
+      if (!options.jsonOutput) {
+        console.log(`[INFO] Backing up ${endpoint.name}...`);
+      }
       
       if (options.dryRun) {
-        console.log(`  [DRY-RUN] Would fetch: ${endpoint.url}`);
-        results.push({ endpoint: endpoint.name, success: true, status: 'dry-run' });
+        if (!options.jsonOutput) {
+          console.log(`  [DRY-RUN] Would fetch: ${endpoint.url}`);
+        }
+        results.push({ 
+          endpoint: endpoint.name, 
+          success: true, 
+          status: 'dry-run',
+          url: endpoint.url,
+          filename: endpoint.filename
+        });
         continue;
       }
 
@@ -178,17 +197,35 @@ async function runBackup(env, options) {
       const outputPath = path.join(backupDir, endpoint.filename);
       fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
       
-      console.log(`  [OK] Saved to: ${endpoint.filename}`);
-      results.push({ endpoint: endpoint.name, success: true, size: JSON.stringify(data).length });
+      if (!options.jsonOutput) {
+        console.log(`  [OK] Saved to: ${endpoint.filename}`);
+      }
+      results.push({ 
+        endpoint: endpoint.name, 
+        success: true, 
+        size: JSON.stringify(data).length,
+        url: endpoint.url,
+        filename: endpoint.filename,
+        path: outputPath
+      });
     } catch (error) {
-      console.error(`  [ERROR] Failed to backup ${endpoint.name}: ${error.message}`);
-      results.push({ endpoint: endpoint.name, success: false, error: error.message });
+      if (!options.jsonOutput) {
+        console.error(`  [ERROR] Failed to backup ${endpoint.name}: ${error.message}`);
+      }
+      results.push({ 
+        endpoint: endpoint.name, 
+        success: false, 
+        error: error.message,
+        url: endpoint.url,
+        filename: endpoint.filename
+      });
     }
   }
 
-  // Create a summary file
+  // Create a summary file if not in dry-run mode
+  let summaryPath = null;
   if (!options.dryRun) {
-    const summaryPath = path.join(backupDir, 'backup-summary.json');
+    summaryPath = path.join(backupDir, 'backup-summary.json');
     const summary = {
       timestamp: new Date().toISOString(),
       haBaseUrl: env.HA_BASE_URL,
@@ -200,13 +237,46 @@ async function runBackup(env, options) {
     };
 
     fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
-    console.log(`[SUCCESS] Backup summary saved to: ${summaryPath}`);
+    if (!options.jsonOutput) {
+      console.log(`[SUCCESS] Backup summary saved to: ${summaryPath}`);
+    }
   }
 
-  // Print summary
-  console.log('\n=== BACKUP SUMMARY ===');
+  // Calculate summary stats
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
+
+  // Output in JSON format if requested
+  if (options.jsonOutput) {
+    const jsonOutput = {
+      timestamp: new Date().toISOString(),
+      action: 'backup-config',
+      dryRun: options.dryRun,
+      success: failed === 0,
+      backupDir: backupDir,
+      summaryPath: summaryPath,
+      parameters: {
+        outputDir: outputDir,
+        haBaseUrl: baseUrl
+      },
+      statistics: {
+        totalEndpoints: endpoints.length,
+        successful: successful,
+        failed: failed
+      },
+      results: results
+    };
+    console.log(JSON.stringify(jsonOutput, null, 2));
+    
+    // Exit with error code if any backups failed
+    if (failed > 0) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  // Print summary for human-readable output
+  console.log('\n=== BACKUP SUMMARY ===');
   console.log(`Total endpoints: ${endpoints.length}`);
   console.log(`Successful: ${successful}`);
   console.log(`Failed: ${failed}`);
