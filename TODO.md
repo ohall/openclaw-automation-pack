@@ -20,7 +20,7 @@ Pick one small item per run; keep commits focused.
 ✅ Add scripts/ha-backup-config.mjs to export critical YAML/files before mutating actions.
 ✅ Add scripts/ha-validate-config.mjs wrapper for config check before restart.
 ✅ Add --dry-run support consistently across all mutating scripts.
-Add --json output mode consistently across all scripts. (PARTIAL: Added to ha-restart-and-wait.mjs and ha-backup-config.mjs; pattern established)
+Add --json output mode consistently across all scripts. (PARTIAL: Added to ha-restart-and-wait.mjs, ha-backup-config.mjs, ha-validate-config.mjs, and ha-entity-rename.mjs; pattern established. Remaining: ha-disable-orphans.mjs, ha-hacs-update.mjs, ha-scan-update-entities.mjs)
 Add shared logger/util for consistent timestamps, status labels, and stderr handling.
 Add basic retry/backoff for transient HA API failures.
 Add explicit confirmation flag for destructive operations (--yes / --force).
