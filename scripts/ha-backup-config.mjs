@@ -11,12 +11,20 @@
  */
 
 import { loadEnvFile, requireKeys } from './_env.mjs';
+import logger from './_logger.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+// Configure logger for this script
+logger.configure({
+  timestamp: true,
+  timestampFormat: 'human',
+  statusPrefix: true,
+});
+
 function printHelp() {
-  console.log(`Usage: node ha-backup-config.mjs [options]
+  logger.help(`Usage: node ha-backup-config.mjs [options]
 
 Options:
   --dry-run             Show what would be backed up without creating files
@@ -63,13 +71,13 @@ function parseArgs() {
         options.outputDir = args[i + 1];
         i++;
       } else {
-        console.error('[ERROR] --output-dir requires a path');
+        logger.error('--output-dir requires a path');
         process.exit(1);
       }
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else {
-      console.error(`[ERROR] Unknown option: ${arg}`);
+      logger.error(`Unknown option: ${arg}`);
       printHelp();
       process.exit(1);
     }
@@ -120,7 +128,7 @@ async function runBackup(env, options) {
     ensureDirectory(path.join(outputDir, `ha-backup-${timestamp}`));
 
   if (!options.jsonOutput) {
-    console.log(`[INFO] Starting backup to: ${backupDir || '(dry-run) would create backup directory'}`);
+    logger.info(`Starting backup to: ${backupDir || '(dry-run) would create backup directory'}`);
   }
   
   const baseUrl = env.HA_BASE_URL;
@@ -174,12 +182,12 @@ async function runBackup(env, options) {
   for (const endpoint of endpoints) {
     try {
       if (!options.jsonOutput) {
-        console.log(`[INFO] Backing up ${endpoint.name}...`);
+        logger.info(`Backing up ${endpoint.name}...`);
       }
       
       if (options.dryRun) {
         if (!options.jsonOutput) {
-          console.log(`  [DRY-RUN] Would fetch: ${endpoint.url}`);
+          logger.info(`Would fetch: ${endpoint.url}`, { label: 'DRY-RUN' });
         }
         results.push({ 
           endpoint: endpoint.name, 
@@ -198,7 +206,7 @@ async function runBackup(env, options) {
       fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
       
       if (!options.jsonOutput) {
-        console.log(`  [OK] Saved to: ${endpoint.filename}`);
+        logger.ok(`Saved to: ${endpoint.filename}`);
       }
       results.push({ 
         endpoint: endpoint.name, 
@@ -210,7 +218,7 @@ async function runBackup(env, options) {
       });
     } catch (error) {
       if (!options.jsonOutput) {
-        console.error(`  [ERROR] Failed to backup ${endpoint.name}: ${error.message}`);
+        logger.error(`Failed to backup ${endpoint.name}: ${error.message}`);
       }
       results.push({ 
         endpoint: endpoint.name, 
@@ -238,7 +246,7 @@ async function runBackup(env, options) {
 
     fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
     if (!options.jsonOutput) {
-      console.log(`[SUCCESS] Backup summary saved to: ${summaryPath}`);
+      logger.success(`Backup summary saved to: ${summaryPath}`);
     }
   }
 
@@ -266,7 +274,7 @@ async function runBackup(env, options) {
       },
       results: results
     };
-    console.log(JSON.stringify(jsonOutput, null, 2));
+    logger.json(jsonOutput);
     
     // Exit with error code if any backups failed
     if (failed > 0) {
@@ -276,31 +284,39 @@ async function runBackup(env, options) {
   }
 
   // Print summary for human-readable output
-  console.log('\n=== BACKUP SUMMARY ===');
-  console.log(`Total endpoints: ${endpoints.length}`);
-  console.log(`Successful: ${successful}`);
-  console.log(`Failed: ${failed}`);
+  logger.info('=== BACKUP SUMMARY ===', { statusPrefix: false });
+  logger.info(`Total endpoints: ${endpoints.length}`, { statusPrefix: false });
+  logger.info(`Successful: ${successful}`, { statusPrefix: false });
+  logger.info(`Failed: ${failed}`, { statusPrefix: false });
   
   if (failed > 0) {
-    console.log('\nFailed endpoints:');
+    logger.info('\nFailed endpoints:', { statusPrefix: false });
     results.filter(r => !r.success).forEach(r => {
-      console.log(`  - ${r.endpoint}: ${r.error}`);
+      logger.info(`  - ${r.endpoint}: ${r.error}`, { statusPrefix: false });
     });
     if (!options.dryRun) {
-      console.log(`\n[WARNING] Some backups failed. Check backup-summary.json for details.`);
+      logger.warn(`Some backups failed. Check backup-summary.json for details.`);
     }
   }
 
   if (!options.dryRun) {
-    console.log(`\nBackup completed successfully to: ${backupDir}`);
-    console.log(`Summary: ${backupDir}/backup-summary.json`);
+    logger.success(`Backup completed successfully to: ${backupDir}`);
+    logger.info(`Summary: ${backupDir}/backup-summary.json`, { statusPrefix: false });
   } else {
-    console.log('\n[DRY RUN] No files were created.');
+    logger.info('No files were created.', { label: 'DRY-RUN' });
   }
 }
 
 async function main() {
   const options = parseArgs();
+
+  // Configure logger based on options
+  logger.configure({
+    timestamp: true,
+    timestampFormat: 'human',
+    statusPrefix: true,
+    outputMode: options.jsonOutput ? 'json' : 'text',
+  });
 
   if (options.help) {
     printHelp();
@@ -314,14 +330,14 @@ async function main() {
   try {
     await runBackup(env, options);
   } catch (error) {
-    console.error(`[FATAL] Backup failed: ${error.message}`);
+    logger.error(`Backup failed: ${error.message}`, { label: 'FATAL' });
     process.exit(1);
   }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
-    console.error(`[FATAL] ${error.message}`);
+    logger.error(`${error.message}`, { label: 'FATAL' });
     process.exit(1);
   });
 }
