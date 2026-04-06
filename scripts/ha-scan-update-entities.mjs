@@ -46,12 +46,13 @@ function printHelp() {
 Options:
   --help      Show this help message
   --verbose   Show progress messages to stderr
+  --json      Output results in JSON format for machine parsing (default: true, flag for consistency)
 
 Environment variables:
   HA_ENV_FILE           Path to environment file (default: homeassistant-api.env)
 
 Examples:
-  # Basic scan
+  # Basic scan (JSON output by default)
   node ha-scan-update-entities.mjs
   
   # With verbose output
@@ -70,6 +71,7 @@ async function main() {
     process.exit(0);
   }
   const verbose = args.includes('--verbose');
+  const jsonOutput = args.includes('--json') || true; // Always true for backward compatibility
 
   // Load environment
   const env = loadEnvFile(process.env.HA_ENV_FILE);
