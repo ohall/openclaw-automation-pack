@@ -11,6 +11,7 @@
  */
 
 import { loadEnvFile, requireKeys } from './_env.mjs';
+import { createRetryableFetch } from './_retry.mjs';
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -55,18 +56,20 @@ Examples:
 }
 
 async function restartHomeAssistant(baseUrl, token, jsonOutput = false) {
-  const res = await fetch(`${baseUrl}/api/services/homeassistant/restart`, {
+  // Create retryable fetch with configuration for restart operations
+  const retryFetch = createRetryableFetch({
+    maxAttempts: 3,
+    baseDelayMs: 2000,
+    operationName: 'Restart Home Assistant',
+  });
+
+  const res = await retryFetch(`${baseUrl}/api/services/homeassistant/restart`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Failed to restart Home Assistant: ${res.status} ${text}`);
-  }
 
   if (!jsonOutput) {
     console.log('[INFO] Restart command sent successfully');
@@ -84,15 +87,22 @@ async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jso
     console.log(`[INFO] Timeout: ${timeoutSec}s, Polling every: ${intervalSec}s`);
   }
 
+  // Create retryable fetch for health checks (different config - quick retries)
+  const healthRetryFetch = createRetryableFetch({
+    maxAttempts: 2,
+    baseDelayMs: 500,
+    operationName: 'HA health check',
+  });
+
   while (Date.now() - startTime < timeoutMs) {
     attempts++;
     
     try {
-      // Try to connect to the API
+      // Try to connect to the API with retry
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const res = await fetch(`${baseUrl}/api/`, {
+      const res = await healthRetryFetch(`${baseUrl}/api/`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
@@ -191,6 +201,13 @@ async function main() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // Create retryable fetch for HA API calls
+  const retryFetch = createRetryableFetch({
+    maxAttempts: 3,
+    baseDelayMs: 1000,
+    operationName: 'HA API call',
+  });
+
   // Log mode
   if (!jsonOutput) {
     console.log(`[INFO] HACS Update Script`);
@@ -198,11 +215,10 @@ async function main() {
     if (dryRun) console.log(`[INFO] This is a dry run - no updates will be installed`);
   }
 
-  // Fetch current states
-  const res = await fetch(`${baseUrl}/api/states`, {
+  // Fetch current states with retry
+  const res = await retryFetch(`${baseUrl}/api/states`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`GET /api/states failed: ${res.status}`);
   const states = await res.json();
 
   // Find updates that need installation
@@ -316,7 +332,7 @@ async function main() {
         console.log(`  [INSTALL] ${u.entity_id} (${u.installed} -> ${u.latest})...`);
       }
       
-      const r = await fetch(`${baseUrl}/api/services/update/install`, {
+      const r = await retryFetch(`${baseUrl}/api/services/update/install`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -324,11 +340,6 @@ async function main() {
         },
         body: JSON.stringify({ entity_id: u.entity_id }),
       });
-      
-      if (!r.ok) {
-        const text = await r.text().catch(() => '');
-        throw new Error(`API error: ${r.status} ${text}`);
-      }
       
       if (!jsonOutput) {
         console.log(`  [SUCCESS] ${u.entity_id} installation triggered`);
