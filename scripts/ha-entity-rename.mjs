@@ -26,12 +26,13 @@ Options:
   --dry-run            Show what would be done without making changes
   --backup-dir <dir>   Directory for backups (default: ./backups)
   --json               Output results in JSON format for machine parsing
+  --yes                Required to proceed with destructive changes (unless using --dry-run)
   --help               Show this help message
 
 Examples:
   node ha-entity-rename.mjs --from sensor.old_temp --to sensor.new_temp --dry-run
-  node ha-entity-rename.mjs --from light.kitchen --to light.kitchen_main --backup-dir /tmp/ha-backups
-  node ha-entity-rename.mjs --from sensor.temp --to sensor.temperature --json
+  node ha-entity-rename.mjs --from light.kitchen --to light.kitchen_main --backup-dir /tmp/ha-backups --yes
+  node ha-entity-rename.mjs --from sensor.temp --to sensor.temperature --json --yes
 `);
 }
 
@@ -120,6 +121,7 @@ async function main() {
   let dryRun = false;
   let backupDir = './backups';
   let jsonOutput = false;
+  let yesFlag = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -137,6 +139,9 @@ async function main() {
         break;
       case '--json':
         jsonOutput = true;
+        break;
+      case '--yes':
+        yesFlag = true;
         break;
       default:
         if (args[i].startsWith('--')) {
@@ -167,6 +172,15 @@ async function main() {
 
   const baseUrl = env.HA_BASE_URL.replace(/\/$/, '');
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
+
+  // Require explicit confirmation for destructive operations
+  if (!yesFlag && !dryRun) {
+    console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
+    console.error('       To proceed, you must provide the --yes flag to confirm you want to rename entities.');
+    console.error('');
+    console.error('       To see what would be changed without making changes, run with --dry-run flag.');
+    process.exit(1);
+  }
 
   // Handle dry-run with JSON output early
   if (dryRun && jsonOutput) {

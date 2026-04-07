@@ -31,6 +31,7 @@ Options:
   --timeout <seconds>   Maximum time to wait for HA to come back (default: 300)
   --interval <seconds>  Polling interval in seconds when waiting (default: 5)
   --json                Output results in JSON format for machine parsing
+  --yes                 Required to proceed with destructive changes (unless using --dry-run)
   --help                Show this help message
 
 Environment variables:
@@ -144,6 +145,7 @@ async function main() {
   let timeoutSec = 300;
   let intervalSec = 5;
   let jsonOutput = false;
+  let yesFlag = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -176,6 +178,9 @@ async function main() {
       case '--json':
         jsonOutput = true;
         break;
+      case '--yes':
+        yesFlag = true;
+        break;
       default:
         if (args[i].startsWith('--')) {
           console.error(`[ERROR] Unknown option: ${args[i]}`);
@@ -195,6 +200,15 @@ async function main() {
 
   const baseUrl = env.HA_BASE_URL.replace(/\/$/, '');
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
+
+  // Require explicit confirmation for destructive operations
+  if (!yesFlag && !dryRun) {
+    console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
+    console.error('       To proceed, you must provide the --yes flag to confirm you want to install updates.');
+    console.error('');
+    console.error('       To see what would be changed without making changes, run with --dry-run flag.');
+    process.exit(1);
+  }
 
   const allow = (process.env.ALLOWLIST || '')
     .split(',')

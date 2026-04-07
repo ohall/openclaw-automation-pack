@@ -20,6 +20,7 @@ async function main() {
   const dryRun = args.includes('--dry-run');
   const help = args.includes('--help') || args.includes('-h');
   const jsonOutput = args.includes('--json');
+  const yesFlag = args.includes('--yes');
   
   if (help) {
     console.log(`Usage: ${process.argv[1]} [options]
@@ -31,6 +32,7 @@ Options:
   --allowlist <file>  JSON file containing entity IDs to keep enabled (array of strings)
   --denylist <file>   JSON file containing entity IDs to always disable (array of strings)
   --json              Output results in JSON format for machine parsing
+  --yes               Required to proceed with destructive changes (unless using --dry-run)
   --help, -h          Show this help message
 
 Environment:
@@ -102,6 +104,15 @@ Environment:
 
   const hubBase = env.HUBITAT_MAKER_API_BASE_URL.replace(/\/$/, '');
   const hubToken = env.HUBITAT_MAKER_API_ACCESS_TOKEN;
+
+  // Require explicit confirmation for destructive operations
+  if (!yesFlag && !dryRun) {
+    console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
+    console.error('       To proceed, you must provide the --yes flag to confirm you want to disable entities.');
+    console.error('');
+    console.error('       To see what would be disabled without making changes, run with --dry-run flag.');
+    process.exit(1);
+  }
 
   const makerRes = await fetch(`${hubBase}/devices/all?access_token=${encodeURIComponent(hubToken)}`);
   if (!makerRes.ok) throw new Error(`Maker API devices/all failed: ${makerRes.status}`);
