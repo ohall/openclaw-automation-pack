@@ -27,6 +27,7 @@ Options:
   --backup-dir <dir>   Directory for backups (default: ./backups)
   --json               Output results in JSON format for machine parsing
   --yes                Required to proceed with destructive changes (unless using --dry-run)
+  --force              Alias for --yes (same meaning)
   --help               Show this help message
 
 Examples:
@@ -122,6 +123,7 @@ async function main() {
   let backupDir = './backups';
   let jsonOutput = false;
   let yesFlag = false;
+let forceFlag = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -142,6 +144,9 @@ async function main() {
         break;
       case '--yes':
         yesFlag = true;
+        break;
+      case '--force':
+        forceFlag = true;
         break;
       default:
         if (args[i].startsWith('--')) {
@@ -174,9 +179,10 @@ async function main() {
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
 
   // Require explicit confirmation for destructive operations
-  if (!yesFlag && !dryRun) {
+  const confirmed = yesFlag || forceFlag;
+  if (!confirmed && !dryRun) {
     console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
-    console.error('       To proceed, you must provide the --yes flag to confirm you want to rename entities.');
+    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to rename entities.');
     console.error('');
     console.error('       To see what would be changed without making changes, run with --dry-run flag.');
     process.exit(1);

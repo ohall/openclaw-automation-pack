@@ -30,6 +30,7 @@ Options:
   --interval <seconds> Polling interval in seconds (default: 5)
   --json              Output results in JSON format for machine parsing
   --yes               Required to proceed with restart (unless using --dry-run)
+  --force             Alias for --yes (same meaning)
   --help              Show this help message
 
 Examples:
@@ -159,6 +160,7 @@ async function main() {
   let intervalSec = 5;
   let jsonOutput = false;
   let yesFlag = false;
+  let forceFlag = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -185,6 +187,9 @@ async function main() {
       case '--yes':
         yesFlag = true;
         break;
+      case '--force':
+        forceFlag = true;
+        break;
       default:
         if (args[i].startsWith('--')) {
           console.error(`[ERROR] Unknown option: ${args[i]}`);
@@ -200,9 +205,10 @@ async function main() {
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
 
   // Require explicit confirmation for destructive operations
-  if (!yesFlag && !dryRun) {
+  const confirmed = yesFlag || forceFlag;
+  if (!confirmed && !dryRun) {
     console.error('ERROR: This command will restart your Home Assistant instance.');
-    console.error('       To proceed, you must provide the --yes flag to confirm you want to restart.');
+    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to restart.');
     console.error('');
     console.error('       To see what would be done without making changes, run with --dry-run flag.');
     process.exit(1);

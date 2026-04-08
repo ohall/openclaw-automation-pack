@@ -21,6 +21,8 @@ async function main() {
   const help = args.includes('--help') || args.includes('-h');
   const jsonOutput = args.includes('--json');
   const yesFlag = args.includes('--yes');
+  const forceFlag = args.includes('--force');
+  const confirmed = yesFlag || forceFlag;
   
   if (help) {
     console.log(`Usage: ${process.argv[1]} [options]
@@ -33,6 +35,7 @@ Options:
   --denylist <file>   JSON file containing entity IDs to always disable (array of strings)
   --json              Output results in JSON format for machine parsing
   --yes               Required to proceed with destructive changes (unless using --dry-run)
+  --force             Alias for --yes (same meaning)
   --help, -h          Show this help message
 
 Environment:
@@ -106,9 +109,9 @@ Environment:
   const hubToken = env.HUBITAT_MAKER_API_ACCESS_TOKEN;
 
   // Require explicit confirmation for destructive operations
-  if (!yesFlag && !dryRun) {
+  if (!confirmed && !dryRun) {
     console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
-    console.error('       To proceed, you must provide the --yes flag to confirm you want to disable entities.');
+    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to disable entities.');
     console.error('');
     console.error('       To see what would be disabled without making changes, run with --dry-run flag.');
     process.exit(1);
