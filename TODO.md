@@ -23,7 +23,7 @@ Pick one small item per run; keep commits focused.
 ✅ Add --json output mode consistently across all scripts.
 ✅ Add shared logger/util for consistent timestamps, status labels, and stderr handling.
 ✅ Add basic retry/backoff for transient HA API failures.
-Add explicit confirmation flag for destructive operations (--yes / --force).
+✅ Add explicit confirmation flag for destructive operations (--yes / --force).
 Add scripts/ha-list-areas-devices.mjs for quick inventory/reporting.
 Add scripts/ha-find-duplicate-friendly-names.mjs to catch naming collisions.
 Add scripts/ha-unused-helpers-report.mjs to identify stale helpers/entities.
