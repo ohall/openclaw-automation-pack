@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.min.js
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.DS_Store
+.env
+.env.local
+.env.*.local
