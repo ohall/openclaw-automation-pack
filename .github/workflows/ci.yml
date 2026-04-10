@@ -26,7 +26,13 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run lint (node --check)
+    - name: Check formatting with Prettier
+      run: npm run format:check
+    
+    - name: Run ESLint
+      run: npm run lint:eslint
+    
+    - name: Run syntax check (node --check)
       run: npm run lint
     
     - name: Run tests
