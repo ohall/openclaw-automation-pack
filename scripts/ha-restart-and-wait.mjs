@@ -18,7 +18,7 @@ import { loadEnvFile, requireKeys } from './_env.mjs';
 import { createRetryableFetch } from './_retry.mjs';
 
 function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
 function printHelp() {
@@ -47,7 +47,11 @@ async function restartHomeAssistant(baseUrl, token, dryRun = false, jsonOutput =
       console.log('[DRY-RUN] Would send restart command to Home Assistant');
       console.log(`[DRY-RUN] Endpoint: ${baseUrl}/api/services/homeassistant/restart`);
     }
-    return { action: 'restart', performed: false, endpoint: `${baseUrl}/api/services/homeassistant/restart` };
+    return {
+      action: 'restart',
+      performed: false,
+      endpoint: `${baseUrl}/api/services/homeassistant/restart`,
+    };
   }
 
   // Create retryable fetch for restart operations
@@ -57,7 +61,7 @@ async function restartHomeAssistant(baseUrl, token, dryRun = false, jsonOutput =
     operationName: 'Restart Home Assistant',
   });
 
-  const res = await retryFetch(`${baseUrl}/api/services/homeassistant/restart`, {
+  await retryFetch(`${baseUrl}/api/services/homeassistant/restart`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -68,8 +72,13 @@ async function restartHomeAssistant(baseUrl, token, dryRun = false, jsonOutput =
   if (!jsonOutput) {
     console.log('[INFO] Restart command sent successfully');
   }
-  
-  return { action: 'restart', performed: true, endpoint: `${baseUrl}/api/services/homeassistant/restart`, success: true };
+
+  return {
+    action: 'restart',
+    performed: true,
+    endpoint: `${baseUrl}/api/services/homeassistant/restart`,
+    success: true,
+  };
 }
 
 async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jsonOutput = false) {
@@ -79,7 +88,7 @@ async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jso
   let attempts = 0;
 
   if (!jsonOutput) {
-    console.log(`[INFO] Waiting for Home Assistant to come back online...`);
+    console.log('[INFO] Waiting for Home Assistant to come back online...');
     console.log(`[INFO] Timeout: ${timeoutSec}s, Polling every: ${intervalSec}s`);
   }
 
@@ -92,29 +101,31 @@ async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jso
 
   while (Date.now() - startTime < timeoutMs) {
     attempts++;
-    
+
     try {
       // Try to connect to the API with retry
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const res = await healthRetryFetch(`${baseUrl}/api/`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (res.ok) {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         if (!jsonOutput) {
-          console.log(`[SUCCESS] Home Assistant is back online after ${elapsed}s (${attempts} attempts)`);
+          console.log(
+            `[SUCCESS] Home Assistant is back online after ${elapsed}s (${attempts} attempts)`
+          );
         }
-        return { 
-          success: true, 
-          elapsedSeconds: parseFloat(elapsed), 
+        return {
+          success: true,
+          elapsedSeconds: parseFloat(elapsed),
           attempts: attempts,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
       }
     } catch (error) {
@@ -135,13 +146,13 @@ async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jso
   if (!jsonOutput) {
     throw new Error(`Timeout after ${elapsed}s. Home Assistant did not come back online.`);
   } else {
-    return { 
-      success: false, 
-      elapsedSeconds: parseFloat(elapsed), 
+    return {
+      success: false,
+      elapsedSeconds: parseFloat(elapsed),
       attempts: attempts,
       timeout: timeoutSec,
       timestamp: new Date().toISOString(),
-      error: `Timeout after ${elapsed}s. Home Assistant did not come back online.`
+      error: `Timeout after ${elapsed}s. Home Assistant did not come back online.`,
     };
   }
 }
@@ -208,9 +219,13 @@ async function main() {
   const confirmed = yesFlag || forceFlag;
   if (!confirmed && !dryRun) {
     console.error('ERROR: This command will restart your Home Assistant instance.');
-    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to restart.');
+    console.error(
+      '       To proceed, you must provide the --yes or --force flag to confirm you want to restart.'
+    );
     console.error('');
-    console.error('       To see what would be done without making changes, run with --dry-run flag.');
+    console.error(
+      '       To see what would be done without making changes, run with --dry-run flag.'
+    );
     process.exit(1);
   }
 
@@ -224,35 +239,37 @@ async function main() {
           parameters: {
             timeoutSeconds: timeoutSec,
             intervalSeconds: intervalSec,
-            baseUrl: baseUrl
+            baseUrl: baseUrl,
           },
           steps: [
             {
               action: 'restart',
               endpoint: `${baseUrl}/api/services/homeassistant/restart`,
-              wouldPerform: true
+              wouldPerform: true,
             },
             {
               action: 'waitForInitiation',
               durationSeconds: 10,
-              wouldPerform: true
+              wouldPerform: true,
             },
             {
               action: 'waitForOnline',
               timeoutSeconds: timeoutSec,
               intervalSeconds: intervalSec,
-              wouldPerform: true
-            }
-          ]
+              wouldPerform: true,
+            },
+          ],
         };
         console.log(JSON.stringify(result, null, 2));
       } else {
         console.log('[DRY-RUN] ====== Home Assistant Restart (Dry Run) ======\n');
-        console.log(`[DRY-RUN] Would send restart command to: ${baseUrl}/api/services/homeassistant/restart`);
-        console.log(`[DRY-RUN] Would wait 10s for restart to initiate...`);
+        console.log(
+          `[DRY-RUN] Would send restart command to: ${baseUrl}/api/services/homeassistant/restart`
+        );
+        console.log('[DRY-RUN] Would wait 10s for restart to initiate...');
         console.log(`[DRY-RUN] Would then wait up to ${timeoutSec}s for HA to come back online`);
         console.log(`[DRY-RUN] Would poll every ${intervalSec}s`);
-        console.log(`\n[DRY-RUN] No actual restart would be performed.`);
+        console.log('\n[DRY-RUN] No actual restart would be performed.');
         console.log('\n[DRY-RUN] ====== Dry Run Complete ======');
       }
       return;
@@ -268,7 +285,13 @@ async function main() {
     await sleep(10000);
 
     // Wait for HA to come back
-    const waitResult = await waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jsonOutput);
+    const waitResult = await waitForHomeAssistant(
+      baseUrl,
+      token,
+      timeoutSec,
+      intervalSec,
+      jsonOutput
+    );
 
     if (jsonOutput) {
       const result = {
@@ -280,8 +303,8 @@ async function main() {
         parameters: {
           timeoutSeconds: timeoutSec,
           intervalSeconds: intervalSec,
-          baseUrl: baseUrl
-        }
+          baseUrl: baseUrl,
+        },
       };
       console.log(JSON.stringify(result, null, 2));
     } else {
@@ -302,8 +325,8 @@ async function main() {
         parameters: {
           timeoutSeconds: timeoutSec,
           intervalSeconds: intervalSec,
-          baseUrl: baseUrl
-        }
+          baseUrl: baseUrl,
+        },
       };
       console.log(JSON.stringify(result, null, 2));
       process.exit(1);
@@ -314,7 +337,7 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error(e?.stack || String(e));
   process.exit(1);
 });

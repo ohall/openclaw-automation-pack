@@ -117,7 +117,7 @@ async function main() {
   // Configure logger
   logger.configure({
     outputMode: jsonOutput ? 'json' : 'text',
-    minLevel: verbose ? 'info' : 'warn'
+    minLevel: verbose ? 'info' : 'warn',
   });
 
   // Load environment
@@ -130,7 +130,7 @@ async function main() {
   if (verbose) logger.info('Connecting to Home Assistant...');
 
   // Connect to Home Assistant
-  const ha = await haConnect({ baseUrl, token }).catch((err) => {
+  const ha = await haConnect({ baseUrl, token }).catch(err => {
     logger.error(`Failed to connect to Home Assistant: ${err.message}`);
     process.exit(2);
   });
@@ -142,7 +142,7 @@ async function main() {
     const [areas, devices, entities] = await Promise.all([
       ha.call('config/area_registry/list'),
       ha.call('config/device_registry/list'),
-      includeEntities ? ha.call('config/entity_registry/list') : Promise.resolve([])
+      includeEntities ? ha.call('config/entity_registry/list') : Promise.resolve([]),
     ]);
 
     if (verbose) {
@@ -164,14 +164,14 @@ async function main() {
     const areaMap = new Map();
     const areaDeviceCounts = new Map();
     const areaEntityCounts = new Map();
-    
+
     for (const area of areas) {
       areaMap.set(area.area_id, {
         name: area.name,
         alias: area.aliases || null,
         picture: area.picture || null,
         device_count: 0,
-        entity_count: 0
+        entity_count: 0,
       });
       areaDeviceCounts.set(area.area_id, 0);
       areaEntityCounts.set(area.area_id, 0);
@@ -180,7 +180,7 @@ async function main() {
     // Build device map and count devices per area
     const deviceMap = new Map();
     const deviceEntityMap = new Map();
-    
+
     // First pass: count devices per area and build device info
     for (const device of devices) {
       const deviceInfo = {
@@ -197,12 +197,12 @@ async function main() {
         identifiers: device.identifiers || [],
         disabled_by: device.disabled_by || null,
         entry_type: device.entry_type || null,
-        entity_count: 0
+        entity_count: 0,
       };
-      
+
       deviceMap.set(device.id, deviceInfo);
       deviceEntityMap.set(device.id, []);
-      
+
       // Count device in its area
       if (device.area_id && areaDeviceCounts.has(device.area_id)) {
         areaDeviceCounts.set(device.area_id, areaDeviceCounts.get(device.area_id) + 1);
@@ -214,13 +214,13 @@ async function main() {
       for (const entity of entities) {
         if (entity.device_id && deviceEntityMap.has(entity.device_id)) {
           deviceEntityMap.get(entity.device_id).push(entity);
-          
+
           // Count entity for the device
           const deviceInfo = deviceMap.get(entity.device_id);
           if (deviceInfo) {
             deviceInfo.entity_count++;
           }
-          
+
           // Count entity for the area (via device)
           if (deviceInfo && deviceInfo.area_id && areaEntityCounts.has(deviceInfo.area_id)) {
             areaEntityCounts.set(deviceInfo.area_id, areaEntityCounts.get(deviceInfo.area_id) + 1);
@@ -238,13 +238,13 @@ async function main() {
     // Build summary statistics
     let devicesWithoutArea = 0;
     let entitiesWithoutDevice = 0;
-    
+
     for (const deviceInfo of deviceMap.values()) {
       if (!deviceInfo.area_id) {
         devicesWithoutArea++;
       }
     }
-    
+
     if (includeEntities) {
       for (const entity of entities) {
         if (!entity.device_id) {
@@ -258,18 +258,19 @@ async function main() {
       timestamp: new Date().toISOString(),
       areas: {
         total: areas.length,
-        by_id: Object.fromEntries(areaMap)
+        by_id: Object.fromEntries(areaMap),
       },
       devices: {
         total: devices.length,
-        by_id: Object.fromEntries(deviceMap)
+        by_id: Object.fromEntries(deviceMap),
       },
       summary: {
-        areas_without_devices: Array.from(areaMap.values()).filter(a => a.device_count === 0).length,
+        areas_without_devices: Array.from(areaMap.values()).filter(a => a.device_count === 0)
+          .length,
         devices_without_area: devicesWithoutArea,
         total_entities: includeEntities ? entities.length : null,
-        entities_without_device: includeEntities ? entitiesWithoutDevice : null
-      }
+        entities_without_device: includeEntities ? entitiesWithoutDevice : null,
+      },
     };
 
     // Include entities if requested
@@ -286,14 +287,14 @@ async function main() {
             disabled_by: entity.disabled_by || null,
             entity_category: entity.entity_category || null,
             icon: entity.icon || null,
-            has_state: states.some(s => s.entity_id === entity.entity_id)
+            has_state: states.some(s => s.entity_id === entity.entity_id),
           }));
         }
       }
-      
+
       report.entities = {
         total: entities.length,
-        by_device: entitiesByDevice
+        by_device: entitiesByDevice,
       };
     }
 
@@ -311,30 +312,34 @@ async function main() {
       console.error(`Devices: ${report.devices.total}`);
       console.error(`Areas without devices: ${report.summary.areas_without_devices}`);
       console.error(`Devices without area assignment: ${report.summary.devices_without_area}`);
-      
+
       if (includeEntities) {
         console.error(`Entities: ${report.summary.total_entities}`);
         console.error(`Entities without device: ${report.summary.entities_without_device}`);
       }
-      
+
       console.error('\nTop areas by device count:');
       const areasByDeviceCount = Array.from(areaMap.entries())
         .sort((a, b) => b[1].device_count - a[1].device_count)
         .slice(0, 5);
-      
+
       for (const [areaId, areaInfo] of areasByDeviceCount) {
-        console.error(`  ${areaInfo.name} (${areaId}): ${areaInfo.device_count} devices, ${areaInfo.entity_count} entities`);
+        console.error(
+          `  ${areaInfo.name} (${areaId}): ${areaInfo.device_count} devices, ${areaInfo.entity_count} entities`
+        );
       }
-      
+
       console.error('\nUnassigned devices (no area):');
       const unassignedDevices = Array.from(deviceMap.entries())
         .filter(([_, device]) => !device.area_id)
         .slice(0, 10);
-      
+
       for (const [deviceId, deviceInfo] of unassignedDevices) {
-        console.error(`  ${deviceInfo.name || 'Unnamed device'} (${deviceId.substring(0, 8)}...): ${deviceInfo.manufacturer || 'Unknown'} ${deviceInfo.model || ''}`);
+        console.error(
+          `  ${deviceInfo.name || 'Unnamed device'} (${deviceId.substring(0, 8)}...): ${deviceInfo.manufacturer || 'Unknown'} ${deviceInfo.model || ''}`
+        );
       }
-      
+
       if (unassignedDevices.length > 10) {
         console.error(`  ... and ${unassignedDevices.length - 10} more`);
       }
@@ -343,7 +348,6 @@ async function main() {
     if (verbose) {
       logger.success('Inventory completed successfully');
     }
-
   } catch (error) {
     logger.error(`Error during inventory: ${error.message}`);
     if (error.stack) console.error(error.stack);
@@ -353,7 +357,7 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+main().catch(error => {
   logger.error(`Unexpected error: ${error.message}`);
   if (error.stack) console.error(error.stack);
   process.exit(1);

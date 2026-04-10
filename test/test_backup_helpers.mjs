@@ -30,12 +30,12 @@ test('generateTimestamp produces valid format', () => {
   // Should match YYYY-MM-DD_HH-MM-SS
   const pattern = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/;
   assert.match(timestamp, pattern);
-  
+
   // Parse to ensure it's valid
   const [datePart, timePart] = timestamp.split('_');
   const [year, month, day] = datePart.split('-').map(Number);
   const [hour, minute, second] = timePart.split('-').map(Number);
-  
+
   assert.ok(year >= 2024, 'Year should be reasonable');
   assert.ok(month >= 1 && month <= 12, 'Month should be 1-12');
   assert.ok(day >= 1 && day <= 31, 'Day should be 1-31');
@@ -46,17 +46,17 @@ test('generateTimestamp produces valid format', () => {
 
 test('ensureDirectory creates directory if it doesnt exist', () => {
   const tempDir = join(tmpdir(), `test-backup-dir-${Date.now()}`);
-  
+
   try {
     // Directory shouldn't exist initially
     assert.ok(!fs.existsSync(tempDir));
-    
+
     // Create it
     const createdDir = ensureDirectory(tempDir);
     assert.strictEqual(createdDir, tempDir);
     assert.ok(fs.existsSync(tempDir));
     assert.ok(fs.statSync(tempDir).isDirectory());
-    
+
     // Call again - should not fail
     const existingDir = ensureDirectory(tempDir);
     assert.strictEqual(existingDir, tempDir);
@@ -69,11 +69,11 @@ test('ensureDirectory creates directory if it doesnt exist', () => {
 
 test('ensureDirectory creates nested directories', () => {
   const tempDir = join(tmpdir(), `test-backup-dir-${Date.now()}`, 'nested', 'deep');
-  
+
   try {
     // Directory shouldn't exist initially
     assert.ok(!fs.existsSync(tempDir));
-    
+
     // Create it
     const createdDir = ensureDirectory(tempDir);
     assert.strictEqual(createdDir, tempDir);

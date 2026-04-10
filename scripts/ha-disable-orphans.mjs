@@ -23,7 +23,7 @@ async function main() {
   const yesFlag = args.includes('--yes');
   const forceFlag = args.includes('--force');
   const confirmed = yesFlag || forceFlag;
-  
+
   if (help) {
     console.log(`Usage: ${process.argv[1]} [options]
     
@@ -47,7 +47,7 @@ Environment:
   // Parse allowlist/denylist arguments
   let allowlist = [];
   let denylist = [];
-  
+
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--allowlist' && i + 1 < args.length) {
       try {
@@ -59,12 +59,18 @@ Environment:
         }
       } catch (e) {
         if (jsonOutput) {
-          console.error(JSON.stringify({
-            timestamp: new Date().toISOString(),
-            action: 'disable-orphans',
-            result: 'error',
-            error: `Failed to load allowlist: ${e.message}`
-          }, null, 2));
+          console.error(
+            JSON.stringify(
+              {
+                timestamp: new Date().toISOString(),
+                action: 'disable-orphans',
+                result: 'error',
+                error: `Failed to load allowlist: ${e.message}`,
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.error(`Failed to load allowlist: ${e.message}`);
         }
@@ -80,12 +86,18 @@ Environment:
         }
       } catch (e) {
         if (jsonOutput) {
-          console.error(JSON.stringify({
-            timestamp: new Date().toISOString(),
-            action: 'disable-orphans',
-            result: 'error',
-            error: `Failed to load denylist: ${e.message}`
-          }, null, 2));
+          console.error(
+            JSON.stringify(
+              {
+                timestamp: new Date().toISOString(),
+                action: 'disable-orphans',
+                result: 'error',
+                error: `Failed to load denylist: ${e.message}`,
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.error(`Failed to load denylist: ${e.message}`);
         }
@@ -110,22 +122,30 @@ Environment:
 
   // Require explicit confirmation for destructive operations
   if (!confirmed && !dryRun) {
-    console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
-    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to disable entities.');
+    console.error(
+      'ERROR: This command will make destructive changes to your Home Assistant configuration.'
+    );
+    console.error(
+      '       To proceed, you must provide the --yes or --force flag to confirm you want to disable entities.'
+    );
     console.error('');
-    console.error('       To see what would be disabled without making changes, run with --dry-run flag.');
+    console.error(
+      '       To see what would be disabled without making changes, run with --dry-run flag.'
+    );
     process.exit(1);
   }
 
-  const makerRes = await fetch(`${hubBase}/devices/all?access_token=${encodeURIComponent(hubToken)}`);
+  const makerRes = await fetch(
+    `${hubBase}/devices/all?access_token=${encodeURIComponent(hubToken)}`
+  );
   if (!makerRes.ok) throw new Error(`Maker API devices/all failed: ${makerRes.status}`);
   const devices = await makerRes.json();
-  const exported = new Set(devices.map((d) => String(d.id)));
+  const exported = new Set(devices.map(d => String(d.id)));
 
   const ha = await haConnect({ baseUrl, token });
   try {
     const entries = await ha.call('config/entity_registry/list');
-    const hubEntries = entries.filter((e) => e.platform === 'hubitat');
+    const hubEntries = entries.filter(e => e.platform === 'hubitat');
 
     const orphans = [];
     for (const e of hubEntries) {
@@ -140,22 +160,28 @@ Environment:
 
     if (!orphans.length) {
       if (jsonOutput) {
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          action: 'disable-orphans',
-          result: 'no-orphans-found',
-          parameters: {
-            dryRun,
-            allowlistCount: allowlist.length,
-            denylistCount: denylist.length
-          },
-          summary: {
-            totalHubitatEntities: hubEntries.length,
-            orphansFound: 0,
-            orphansToProcess: 0,
-            changesMade: 0
-          }
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              timestamp: new Date().toISOString(),
+              action: 'disable-orphans',
+              result: 'no-orphans-found',
+              parameters: {
+                dryRun,
+                allowlistCount: allowlist.length,
+                denylistCount: denylist.length,
+              },
+              summary: {
+                totalHubitatEntities: hubEntries.length,
+                orphansFound: 0,
+                orphansToProcess: 0,
+                changesMade: 0,
+              },
+            },
+            null,
+            2
+          )
+        );
       } else {
         console.log('No hubitat orphan entities found.');
       }
@@ -166,13 +192,13 @@ Environment:
     const filteredOrphans = orphans.filter(o => {
       // Skip if already disabled
       if (o.disabled_by === 'user') return false;
-      
+
       // Always disable entities in denylist
       if (denylist.includes(o.entity_id)) return true;
-      
+
       // Skip entities in allowlist
       if (allowlist.includes(o.entity_id)) return false;
-      
+
       return true;
     });
 
@@ -181,62 +207,78 @@ Environment:
 
     if (!filteredOrphans.length) {
       if (jsonOutput) {
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          action: 'disable-orphans',
-          result: 'no-orphans-to-process',
-          parameters: {
-            dryRun,
-            allowlistCount: allowlist.length,
-            denylistCount: denylist.length
-          },
-          summary: {
-            totalHubitatEntities: hubEntries.length,
-            orphansFound: orphans.length,
-            allowedByAllowlist: allowedCount,
-            forcedByDenylist: deniedCount,
-            orphansToProcess: 0,
-            changesMade: 0
-          }
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              timestamp: new Date().toISOString(),
+              action: 'disable-orphans',
+              result: 'no-orphans-to-process',
+              parameters: {
+                dryRun,
+                allowlistCount: allowlist.length,
+                denylistCount: denylist.length,
+              },
+              summary: {
+                totalHubitatEntities: hubEntries.length,
+                orphansFound: orphans.length,
+                allowedByAllowlist: allowedCount,
+                forcedByDenylist: deniedCount,
+                orphansToProcess: 0,
+                changesMade: 0,
+              },
+            },
+            null,
+            2
+          )
+        );
       } else {
-        console.log(`No orphan entities to disable after filtering (${allowedCount} allowed, ${deniedCount} in denylist).`);
+        console.log(
+          `No orphan entities to disable after filtering (${allowedCount} allowed, ${deniedCount} in denylist).`
+        );
       }
       return;
     }
 
     if (!jsonOutput) {
       console.log(`Found ${orphans.length} orphan hubitat entities.`);
-      if (allowlist.length) console.log(`  - ${allowlist.length} entities in allowlist will be skipped`);
-      if (denylist.length) console.log(`  - ${denylist.length} entities in denylist will be disabled`);
+      if (allowlist.length)
+        console.log(`  - ${allowlist.length} entities in allowlist will be skipped`);
+      if (denylist.length)
+        console.log(`  - ${denylist.length} entities in denylist will be disabled`);
       console.log(`  - ${filteredOrphans.length} entities to process`);
     }
-    
+
     if (dryRun) {
       if (jsonOutput) {
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          action: 'disable-orphans',
-          result: 'dry-run',
-          parameters: {
-            dryRun: true,
-            allowlistCount: allowlist.length,
-            denylistCount: denylist.length
-          },
-          summary: {
-            totalHubitatEntities: hubEntries.length,
-            orphansFound: orphans.length,
-            allowedByAllowlist: allowedCount,
-            forcedByDenylist: deniedCount,
-            orphansToProcess: filteredOrphans.length,
-            changesMade: 0
-          },
-          entities: filteredOrphans.map(o => ({
-            entity_id: o.entity_id,
-            unique_id: o.unique_id,
-            disabled_by: o.disabled_by
-          }))
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              timestamp: new Date().toISOString(),
+              action: 'disable-orphans',
+              result: 'dry-run',
+              parameters: {
+                dryRun: true,
+                allowlistCount: allowlist.length,
+                denylistCount: denylist.length,
+              },
+              summary: {
+                totalHubitatEntities: hubEntries.length,
+                orphansFound: orphans.length,
+                allowedByAllowlist: allowedCount,
+                forcedByDenylist: deniedCount,
+                orphansToProcess: filteredOrphans.length,
+                changesMade: 0,
+              },
+              entities: filteredOrphans.map(o => ({
+                entity_id: o.entity_id,
+                unique_id: o.unique_id,
+                disabled_by: o.disabled_by,
+              })),
+            },
+            null,
+            2
+          )
+        );
       } else {
         console.log('\nDRY RUN - No changes will be made. Entities that would be disabled:');
         for (const o of filteredOrphans) {
@@ -254,7 +296,10 @@ Environment:
     const changes = [];
     let changed = 0;
     for (const o of filteredOrphans) {
-      await ha.call('config/entity_registry/update', { entity_id: o.entity_id, disabled_by: 'user' });
+      await ha.call('config/entity_registry/update', {
+        entity_id: o.entity_id,
+        disabled_by: 'user',
+      });
       changed++;
       changes.push({ entity_id: o.entity_id, unique_id: o.unique_id, disabled_by: 'user' });
       if (!jsonOutput) {
@@ -263,25 +308,31 @@ Environment:
     }
 
     if (jsonOutput) {
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        action: 'disable-orphans',
-        result: 'success',
-        parameters: {
-          dryRun: false,
-          allowlistCount: allowlist.length,
-          denylistCount: denylist.length
-        },
-        summary: {
-          totalHubitatEntities: hubEntries.length,
-          orphansFound: orphans.length,
-          allowedByAllowlist: allowedCount,
-          forcedByDenylist: deniedCount,
-          orphansToProcess: filteredOrphans.length,
-          changesMade: changed
-        },
-        changes: changes
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            timestamp: new Date().toISOString(),
+            action: 'disable-orphans',
+            result: 'success',
+            parameters: {
+              dryRun: false,
+              allowlistCount: allowlist.length,
+              denylistCount: denylist.length,
+            },
+            summary: {
+              totalHubitatEntities: hubEntries.length,
+              orphansFound: orphans.length,
+              allowedByAllowlist: allowedCount,
+              forcedByDenylist: deniedCount,
+              orphansToProcess: filteredOrphans.length,
+              changesMade: changed,
+            },
+            changes: changes,
+          },
+          null,
+          2
+        )
+      );
     } else {
       console.log(`Done. Disabled ${changed} entities.`);
     }
@@ -290,7 +341,7 @@ Environment:
   }
 }
 
-main().catch((e) => {
+main().catch(e => {
   // jsonOutput is not available here, so we'll just output regular error
   console.error(e?.stack || String(e));
   process.exit(1);

@@ -17,7 +17,7 @@ export function loadEnvFile(filePath) {
   // Default search paths (in order)
   const defaultPaths = [
     path.join(os.homedir(), '.openclaw', 'credentials', 'homeassistant-api.env'),
-    path.join(process.cwd(), '.env')
+    path.join(process.cwd(), '.env'),
   ];
 
   for (const p of defaultPaths) {
@@ -26,7 +26,7 @@ export function loadEnvFile(filePath) {
     }
   }
 
-  console.error(`[ERROR] No environment file found. Tried:`);
+  console.error('[ERROR] No environment file found. Tried:');
   defaultPaths.forEach(p => console.error(`  ${p}`));
   process.exit(1);
 }
@@ -40,7 +40,7 @@ function loadEnvFromFile(filePath) {
   try {
     const out = {};
     const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) continue;
@@ -86,7 +86,7 @@ export function requireKeys(env, keys) {
  */
 export function httpToWs(url) {
   return url.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
-}// TODO: Add file existence check
+} // TODO: Add file existence check
 // TODO: Add file existence check
 // TODO: Add file existence check
 // TODO: Add file existence check

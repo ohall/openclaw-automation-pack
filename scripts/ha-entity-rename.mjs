@@ -40,7 +40,7 @@ Examples:
 async function createBackup(baseUrl, token, backupDir, jsonOutput = false) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupFile = path.join(backupDir, `entity-registry-${timestamp}.json`);
-  
+
   // Ensure backup directory exists
   if (!fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
@@ -50,14 +50,14 @@ async function createBackup(baseUrl, token, backupDir, jsonOutput = false) {
   const res = await fetch(`${baseUrl}/api/config/entity_registry/list`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  
+
   if (!res.ok) {
     throw new Error(`Failed to get entity registry: ${res.status}`);
   }
-  
+
   const entities = await res.json();
   fs.writeFileSync(backupFile, JSON.stringify(entities, null, 2));
-  
+
   if (!jsonOutput) {
     console.log(`[BACKUP] Created backup: ${backupFile}`);
   }
@@ -68,16 +68,23 @@ async function getEntityInfo(baseUrl, token, entityId) {
   const res = await fetch(`${baseUrl}/api/config/entity_registry/list`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  
+
   if (!res.ok) {
     throw new Error(`Failed to get entity registry: ${res.status}`);
   }
-  
+
   const entities = await res.json();
   return entities.find(e => e.entity_id === entityId);
 }
 
-async function updateEntityId(baseUrl, token, oldEntityId, newEntityId, dryRun = false, jsonOutput = false) {
+async function updateEntityId(
+  baseUrl,
+  token,
+  oldEntityId,
+  newEntityId,
+  dryRun = false,
+  jsonOutput = false
+) {
   if (dryRun) {
     if (!jsonOutput) {
       console.log(`[DRY-RUN] Would rename ${oldEntityId} -> ${newEntityId}`);
@@ -104,13 +111,13 @@ async function updateEntityId(baseUrl, token, oldEntityId, newEntityId, dryRun =
   if (!jsonOutput) {
     console.log(`[SUCCESS] Renamed ${oldEntityId} -> ${newEntityId}`);
   }
-  
+
   return { action: 'rename', performed: true, from: oldEntityId, to: newEntityId, success: true };
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.includes('--help')) {
     printHelp();
     return;
@@ -123,7 +130,7 @@ async function main() {
   let backupDir = './backups';
   let jsonOutput = false;
   let yesFlag = false;
-let forceFlag = false;
+  let forceFlag = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -158,13 +165,19 @@ let forceFlag = false;
 
   if (!fromEntity || !toEntity) {
     if (jsonOutput) {
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        action: 'entity-rename',
-        success: false,
-        error: 'Both --from and --to entity IDs are required',
-        parameters: {}
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            timestamp: new Date().toISOString(),
+            action: 'entity-rename',
+            success: false,
+            error: 'Both --from and --to entity IDs are required',
+            parameters: {},
+          },
+          null,
+          2
+        )
+      );
     } else {
       console.error('[ERROR] Both --from and --to entity IDs are required');
       printHelp();
@@ -181,10 +194,16 @@ let forceFlag = false;
   // Require explicit confirmation for destructive operations
   const confirmed = yesFlag || forceFlag;
   if (!confirmed && !dryRun) {
-    console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
-    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to rename entities.');
+    console.error(
+      'ERROR: This command will make destructive changes to your Home Assistant configuration.'
+    );
+    console.error(
+      '       To proceed, you must provide the --yes or --force flag to confirm you want to rename entities.'
+    );
     console.error('');
-    console.error('       To see what would be changed without making changes, run with --dry-run flag.');
+    console.error(
+      '       To see what would be changed without making changes, run with --dry-run flag.'
+    );
     process.exit(1);
   }
 
@@ -199,31 +218,31 @@ let forceFlag = false;
         from: fromEntity,
         to: toEntity,
         backupDir,
-        baseUrl: baseUrl
+        baseUrl: baseUrl,
       },
       steps: [
         {
           action: 'validateSource',
           wouldPerform: true,
-          check: `Check if entity ${fromEntity} exists`
+          check: `Check if entity ${fromEntity} exists`,
         },
         {
           action: 'validateTarget',
           wouldPerform: true,
-          check: `Check if entity ${toEntity} already exists`
+          check: `Check if entity ${toEntity} already exists`,
         },
         {
           action: 'createBackup',
           wouldPerform: true,
-          description: `Create entity registry backup in ${backupDir}`
+          description: `Create entity registry backup in ${backupDir}`,
         },
         {
           action: 'rename',
           wouldPerform: true,
-          description: `Rename ${fromEntity} -> ${toEntity}`
-        }
+          description: `Rename ${fromEntity} -> ${toEntity}`,
+        },
       ],
-      note: 'No actual changes would be made in dry-run mode'
+      note: 'No actual changes would be made in dry-run mode',
     };
     console.log(JSON.stringify(dryRunResult, null, 2));
     return;
@@ -234,13 +253,19 @@ let forceFlag = false;
     const sourceEntity = await getEntityInfo(baseUrl, token, fromEntity);
     if (!sourceEntity) {
       if (jsonOutput) {
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          action: 'entity-rename',
-          success: false,
-          error: `Source entity not found: ${fromEntity}`,
-          parameters: { from: fromEntity, to: toEntity, dryRun, backupDir }
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              timestamp: new Date().toISOString(),
+              action: 'entity-rename',
+              success: false,
+              error: `Source entity not found: ${fromEntity}`,
+              parameters: { from: fromEntity, to: toEntity, dryRun, backupDir },
+            },
+            null,
+            2
+          )
+        );
       } else {
         console.error(`[ERROR] Source entity not found: ${fromEntity}`);
       }
@@ -251,13 +276,19 @@ let forceFlag = false;
     const targetEntity = await getEntityInfo(baseUrl, token, toEntity);
     if (targetEntity) {
       if (jsonOutput) {
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          action: 'entity-rename',
-          success: false,
-          error: `Target entity already exists: ${toEntity}`,
-          parameters: { from: fromEntity, to: toEntity, dryRun, backupDir }
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              timestamp: new Date().toISOString(),
+              action: 'entity-rename',
+              success: false,
+              error: `Target entity already exists: ${toEntity}`,
+              parameters: { from: fromEntity, to: toEntity, dryRun, backupDir },
+            },
+            null,
+            2
+          )
+        );
       } else {
         console.error(`[ERROR] Target entity already exists: ${toEntity}`);
       }
@@ -278,7 +309,14 @@ let forceFlag = false;
     }
 
     // Perform the rename
-    const renameResult = await updateEntityId(baseUrl, token, fromEntity, toEntity, dryRun, jsonOutput);
+    const renameResult = await updateEntityId(
+      baseUrl,
+      token,
+      fromEntity,
+      toEntity,
+      dryRun,
+      jsonOutput
+    );
 
     if (jsonOutput) {
       const result = {
@@ -289,16 +327,16 @@ let forceFlag = false;
           from: fromEntity,
           to: toEntity,
           dryRun,
-          backupDir
+          backupDir,
         },
         sourceEntity: {
           entity_id: sourceEntity.entity_id,
           platform: sourceEntity.platform,
           device_class: sourceEntity.device_class,
-          name: sourceEntity.name
+          name: sourceEntity.name,
         },
         backup: backupResult,
-        rename: renameResult
+        rename: renameResult,
       };
       console.log(JSON.stringify(result, null, 2));
     } else {
@@ -306,19 +344,26 @@ let forceFlag = false;
         console.log('\n[DRY-RUN] No changes made. Remove --dry-run to apply changes.');
       } else {
         console.log('\n[SUCCESS] Entity rename completed successfully.');
-        console.log('[NOTE] You may need to restart Home Assistant for all changes to take effect.');
+        console.log(
+          '[NOTE] You may need to restart Home Assistant for all changes to take effect.'
+        );
       }
     }
-
   } catch (error) {
     if (jsonOutput) {
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        action: 'entity-rename',
-        success: false,
-        error: error.message,
-        parameters: { from: fromEntity, to: toEntity, dryRun, backupDir }
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            timestamp: new Date().toISOString(),
+            action: 'entity-rename',
+            success: false,
+            error: error.message,
+            parameters: { from: fromEntity, to: toEntity, dryRun, backupDir },
+          },
+          null,
+          2
+        )
+      );
       process.exit(1);
     } else {
       console.error(`[ERROR] ${error.message}`);
@@ -327,7 +372,7 @@ let forceFlag = false;
   }
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error(e?.stack || String(e));
   process.exit(1);
 });

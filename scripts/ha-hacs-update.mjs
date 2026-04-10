@@ -14,7 +14,7 @@ import { loadEnvFile, requireKeys } from './_env.mjs';
 import { createRetryableFetch } from './_retry.mjs';
 
 function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
 function jsonOutputResult(result) {
@@ -65,7 +65,7 @@ async function restartHomeAssistant(baseUrl, token, jsonOutput = false) {
     operationName: 'Restart Home Assistant',
   });
 
-  const res = await retryFetch(`${baseUrl}/api/services/homeassistant/restart`, {
+  await retryFetch(`${baseUrl}/api/services/homeassistant/restart`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -85,7 +85,7 @@ async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jso
   let attempts = 0;
 
   if (!jsonOutput) {
-    console.log(`[INFO] Waiting for Home Assistant to come back online...`);
+    console.log('[INFO] Waiting for Home Assistant to come back online...');
     console.log(`[INFO] Timeout: ${timeoutSec}s, Polling every: ${intervalSec}s`);
   }
 
@@ -98,23 +98,25 @@ async function waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jso
 
   while (Date.now() - startTime < timeoutMs) {
     attempts++;
-    
+
     try {
       // Try to connect to the API with retry
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const res = await healthRetryFetch(`${baseUrl}/api/`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (res.ok) {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         if (!jsonOutput) {
-          console.log(`[SUCCESS] Home Assistant is back online after ${elapsed}s (${attempts} attempts)`);
+          console.log(
+            `[SUCCESS] Home Assistant is back online after ${elapsed}s (${attempts} attempts)`
+          );
         }
         return true;
       }
@@ -209,16 +211,22 @@ async function main() {
   // Require explicit confirmation for destructive operations
   const confirmed = yesFlag || forceFlag;
   if (!confirmed && !dryRun) {
-    console.error('ERROR: This command will make destructive changes to your Home Assistant configuration.');
-    console.error('       To proceed, you must provide the --yes or --force flag to confirm you want to install updates.');
+    console.error(
+      'ERROR: This command will make destructive changes to your Home Assistant configuration.'
+    );
+    console.error(
+      '       To proceed, you must provide the --yes or --force flag to confirm you want to install updates.'
+    );
     console.error('');
-    console.error('       To see what would be changed without making changes, run with --dry-run flag.');
+    console.error(
+      '       To see what would be changed without making changes, run with --dry-run flag.'
+    );
     process.exit(1);
   }
 
   const allow = (process.env.ALLOWLIST || '')
     .split(',')
-    .map((s) => s.trim())
+    .map(s => s.trim())
     .filter(Boolean);
 
   // Create retryable fetch for HA API calls
@@ -230,9 +238,9 @@ async function main() {
 
   // Log mode
   if (!jsonOutput) {
-    console.log(`[INFO] HACS Update Script`);
+    console.log('[INFO] HACS Update Script');
     console.log(`[INFO] Mode: ${dryRun ? 'DRY RUN (no changes will be made)' : 'LIVE'}`);
-    if (dryRun) console.log(`[INFO] This is a dry run - no updates will be installed`);
+    if (dryRun) console.log('[INFO] This is a dry run - no updates will be installed');
   }
 
   // Fetch current states with retry
@@ -243,21 +251,21 @@ async function main() {
 
   // Find updates that need installation
   const updates = states
-    .filter((s) => typeof s.entity_id === 'string' && s.entity_id.startsWith('update.'))
-    .filter((s) => s.state === 'on')
-    .filter((s) => {
+    .filter(s => typeof s.entity_id === 'string' && s.entity_id.startsWith('update.'))
+    .filter(s => s.state === 'on')
+    .filter(s => {
       const installed = s.attributes?.installed_version;
       const latest = s.attributes?.latest_version;
       return installed && latest && installed !== latest;
     })
-    .map((s) => ({
+    .map(s => ({
       entity_id: s.entity_id,
       title: s.attributes?.title || s.attributes?.friendly_name || s.entity_id,
       installed: s.attributes?.installed_version,
       latest: s.attributes?.latest_version,
       domain: s.attributes?.domain || 'unknown',
     }))
-    .filter((u) => (allow.length ? allow.includes(u.entity_id) : true));
+    .filter(u => (allow.length ? allow.includes(u.entity_id) : true));
 
   if (!updates.length) {
     if (jsonOutput) {
@@ -271,13 +279,13 @@ async function main() {
           waitForHealthy,
           timeoutSec,
           intervalSec,
-          allowlistCount: allow.length
+          allowlistCount: allow.length,
         },
         summary: {
           totalUpdateEntities: states.filter(s => s.entity_id.startsWith('update.')).length,
           pendingUpdates: 0,
-          updatesFound: 0
-        }
+          updatesFound: 0,
+        },
       });
     } else {
       console.log('[INFO] No update.* entities need installation.');
@@ -306,31 +314,33 @@ async function main() {
           waitForHealthy,
           timeoutSec,
           intervalSec,
-          allowlistCount: allow.length
+          allowlistCount: allow.length,
         },
         summary: {
           totalUpdateEntities: states.filter(s => s.entity_id.startsWith('update.')).length,
           pendingUpdates: updates.length,
-          updatesToInstall: updates.length
+          updatesToInstall: updates.length,
         },
         updates: updates.map(u => ({
           entity_id: u.entity_id,
           title: u.title,
           installed: u.installed,
           latest: u.latest,
-          domain: u.domain
+          domain: u.domain,
         })),
-        restartInfo: autoRestart ? {
-          wouldRestart: true,
-          wouldWaitForHealthy: waitForHealthy,
-          waitTimeout: waitForHealthy ? timeoutSec : undefined,
-          waitInterval: waitForHealthy ? intervalSec : undefined
-        } : { wouldRestart: false }
+        restartInfo: autoRestart
+          ? {
+              wouldRestart: true,
+              wouldWaitForHealthy: waitForHealthy,
+              waitTimeout: waitForHealthy ? timeoutSec : undefined,
+              waitInterval: waitForHealthy ? intervalSec : undefined,
+            }
+          : { wouldRestart: false },
       });
     } else {
       console.log(`\n[DRY RUN] Would install ${updates.length} update(s)`);
       if (autoRestart) {
-        console.log(`[DRY RUN] Would restart Home Assistant after updates`);
+        console.log('[DRY RUN] Would restart Home Assistant after updates');
         if (waitForHealthy) {
           console.log(`[DRY RUN] Would wait for HA to come back online (timeout: ${timeoutSec}s)`);
         }
@@ -341,7 +351,7 @@ async function main() {
 
   // Install updates
   if (!jsonOutput) {
-    console.log(`\n[INFO] Installing updates...`);
+    console.log('\n[INFO] Installing updates...');
   }
   const installed = [];
   const failed = [];
@@ -351,8 +361,8 @@ async function main() {
       if (!jsonOutput) {
         console.log(`  [INSTALL] ${u.entity_id} (${u.installed} -> ${u.latest})...`);
       }
-      
-      const r = await retryFetch(`${baseUrl}/api/services/update/install`, {
+
+      await retryFetch(`${baseUrl}/api/services/update/install`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -360,7 +370,7 @@ async function main() {
         },
         body: JSON.stringify({ entity_id: u.entity_id }),
       });
-      
+
       if (!jsonOutput) {
         console.log(`  [SUCCESS] ${u.entity_id} installation triggered`);
       }
@@ -375,12 +385,12 @@ async function main() {
 
   // Report installation results
   if (!jsonOutput) {
-    console.log(`\n[INFO] Installation summary:`);
+    console.log('\n[INFO] Installation summary:');
     console.log(`  - Successful: ${installed.length}`);
     console.log(`  - Failed: ${failed.length}`);
-    
+
     if (failed.length > 0) {
-      console.log(`\n[ERROR] Failed updates:`);
+      console.log('\n[ERROR] Failed updates:');
       for (const f of failed) {
         console.log(`  - ${f.entity_id}: ${f.error}`);
       }
@@ -390,7 +400,7 @@ async function main() {
   // Give HA a moment to download/extract if anything was installed
   if (installed.length > 0) {
     if (!jsonOutput) {
-      console.log(`\n[INFO] Waiting 20s for downloads/extraction to complete...`);
+      console.log('\n[INFO] Waiting 20s for downloads/extraction to complete...');
     }
     await sleep(20_000);
   }
@@ -399,25 +409,25 @@ async function main() {
   let restartResult = null;
   if (autoRestart && installed.length > 0) {
     if (!jsonOutput) {
-      console.log(`\n[INFO] Auto-restart requested...`);
+      console.log('\n[INFO] Auto-restart requested...');
     }
-    
+
     try {
       await restartHomeAssistant(baseUrl, token, jsonOutput);
       restartResult = { restartTriggered: true, restartError: null };
-      
+
       if (waitForHealthy) {
         // Wait for restart to begin
         if (!jsonOutput) {
           console.log('[INFO] Waiting 10s for restart to initiate...');
         }
         await sleep(10000);
-        
+
         // Wait for HA to come back
         await waitForHomeAssistant(baseUrl, token, timeoutSec, intervalSec, jsonOutput);
         restartResult.waitForHealthy = true;
         restartResult.healthy = true;
-        
+
         if (!jsonOutput) {
           console.log('\n[SUCCESS] Home Assistant restart completed successfully!');
         }
@@ -431,7 +441,7 @@ async function main() {
       restartResult = { restartTriggered: true, restartError: error.message, waitForHealthy };
       if (!jsonOutput) {
         console.error(`[ERROR] Restart failed: ${error.message}`);
-        console.error(`[INFO] Updates were installed successfully, but restart failed.`);
+        console.error('[INFO] Updates were installed successfully, but restart failed.');
       }
     }
   } else if (installed.length > 0 && !jsonOutput) {
@@ -443,20 +453,21 @@ async function main() {
     const result = {
       timestamp: new Date().toISOString(),
       action: 'hacs-update',
-      result: failed.length > 0 ? 'partial-failure' : (installed.length > 0 ? 'success' : 'no-changes'),
+      result:
+        failed.length > 0 ? 'partial-failure' : installed.length > 0 ? 'success' : 'no-changes',
       parameters: {
         dryRun: false,
         autoRestart,
         waitForHealthy,
         timeoutSec,
         intervalSec,
-        allowlistCount: allow.length
+        allowlistCount: allow.length,
       },
       summary: {
         totalUpdateEntities: states.filter(s => s.entity_id.startsWith('update.')).length,
         pendingUpdates: updates.length,
         updatesInstalled: installed.length,
-        updatesFailed: failed.length
+        updatesFailed: failed.length,
       },
       updates: updates.map(u => ({
         entity_id: u.entity_id,
@@ -464,16 +475,16 @@ async function main() {
         installed: u.installed,
         latest: u.latest,
         domain: u.domain,
-        status: failed.find(f => f.entity_id === u.entity_id) ? 'failed' : 'installed'
+        status: failed.find(f => f.entity_id === u.entity_id) ? 'failed' : 'installed',
       })),
       installed: installed.map(u => u.entity_id),
       failed: failed.map(f => ({
         entity_id: f.entity_id,
-        error: f.error
+        error: f.error,
       })),
-      restart: restartResult
+      restart: restartResult,
     };
-    
+
     jsonOutputResult(result);
   }
 
@@ -486,7 +497,7 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error(e?.stack || String(e));
   process.exit(1);
 });

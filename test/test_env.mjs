@@ -8,7 +8,7 @@ import assert from 'node:assert';
 test('loadEnvFile loads from explicit file', () => {
   const tmpFile = join(tmpdir(), `test-env-${Date.now()}.env`);
   writeFileSync(tmpFile, 'TEST_KEY=value\nANOTHER=123');
-  
+
   try {
     const env = loadEnvFile(tmpFile);
     assert.strictEqual(env.TEST_KEY, 'value');
@@ -21,7 +21,7 @@ test('loadEnvFile loads from explicit file', () => {
 test('loadEnvFile ignores comments and empty lines', () => {
   const tmpFile = join(tmpdir(), `test-env-${Date.now()}.env`);
   writeFileSync(tmpFile, '# comment\n\nKEY=value\n  # another\n');
-  
+
   try {
     const env = loadEnvFile(tmpFile);
     assert.strictEqual(Object.keys(env).length, 1);

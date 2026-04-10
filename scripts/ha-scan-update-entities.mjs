@@ -71,7 +71,6 @@ async function main() {
     process.exit(0);
   }
   const verbose = args.includes('--verbose');
-  const jsonOutput = args.includes('--json') || true; // Always true for backward compatibility
 
   // Load environment
   const env = loadEnvFile(process.env.HA_ENV_FILE);
@@ -83,7 +82,7 @@ async function main() {
   if (verbose) console.error('Connecting to Home Assistant...');
 
   // Connect to Home Assistant
-  const ha = await haConnect({ baseUrl, token }).catch((err) => {
+  const ha = await haConnect({ baseUrl, token }).catch(err => {
     console.error(`Failed to connect to Home Assistant: ${err.message}`);
     process.exit(2);
   });
@@ -93,11 +92,12 @@ async function main() {
 
     // Get all entities
     const entities = await ha.call('config/entity_registry/list');
-    
+
     // Filter for update entities
     const updateEntities = entities.filter(e => e.entity_id.startsWith('update.'));
-    
-    if (verbose) console.error(`Found ${updateEntities.length} update entities, fetching states...`);
+
+    if (verbose)
+      console.error(`Found ${updateEntities.length} update entities, fetching states...`);
 
     // Get states for all update entities
     const states = await ha.call('get_states');
@@ -108,7 +108,7 @@ async function main() {
       timestamp: new Date().toISOString(),
       total_update_entities: updateEntities.length,
       pending_updates: 0,
-      entities: []
+      entities: [],
     };
 
     for (const entity of updateEntities) {
@@ -125,7 +125,7 @@ async function main() {
         release_url: state.attributes?.release_url || null,
         in_progress: state.attributes?.in_progress || false,
         entity_category: entity.entity_category || null,
-        platform: entity.platform || null
+        platform: entity.platform || null,
       };
 
       if (state.state === 'on') {
@@ -142,17 +142,16 @@ async function main() {
     console.log(JSON.stringify(report, null, 2));
 
     if (verbose) {
-      console.error(`\nSummary:`);
+      console.error('\nSummary:');
       console.error(`  Total update entities: ${report.total_update_entities}`);
       console.error(`  Pending updates: ${report.pending_updates}`);
       if (report.pending_updates > 0) {
-        console.error(`  Entities with updates:`);
+        console.error('  Entities with updates:');
         report.entities
           .filter(e => e.state === 'on')
           .forEach(e => console.error(`    - ${e.entity_id} (${e.friendly_name || 'no name'})`));
       }
     }
-
   } catch (error) {
     console.error(`Error during scan: ${error.message}`);
     if (error.stack) console.error(error.stack);
@@ -162,7 +161,7 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error(`Unexpected error: ${error.message}`);
   if (error.stack) console.error(error.stack);
   process.exit(1);

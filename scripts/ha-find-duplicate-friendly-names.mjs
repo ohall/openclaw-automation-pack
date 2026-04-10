@@ -87,7 +87,7 @@ async function main() {
   const dryRun = !args.includes('--no-dry-run'); // Default to dry-run for safety
 
   if (verbose) {
-    console.error(`[INFO] Starting duplicate friendly name scan`);
+    console.error('[INFO] Starting duplicate friendly name scan');
     console.error(`[INFO] Dry run mode: ${dryRun ? 'ON' : 'OFF'}`);
   }
 
@@ -101,31 +101,31 @@ async function main() {
     // Connect to Home Assistant
     if (verbose) console.error(`[INFO] Connecting to ${baseUrl}...`);
     const ha = await haConnect({ baseUrl, token: env.HA_LONG_LIVED_ACCESS_TOKEN });
-    
+
     // Fetch entity registry and states in parallel
-    if (verbose) console.error(`[INFO] Fetching entity registry and states...`);
+    if (verbose) console.error('[INFO] Fetching entity registry and states...');
     const [entityRegistry, states] = await Promise.all([
       ha.call('config/entity_registry/list'),
-      ha.call('get_states')
+      ha.call('get_states'),
     ]);
-    
+
     // Create a map of entity_id to entity registry entry
     const registryMap = new Map();
     for (const entry of entityRegistry) {
       registryMap.set(entry.entity_id, entry);
     }
-    
+
     // Create a map of entity_id to state
     const stateMap = new Map();
     for (const state of states) {
       stateMap.set(state.entity_id, state);
     }
-    
+
     if (verbose) {
       console.error(`[INFO] Found ${entityRegistry.length} entities in registry`);
       console.error(`[INFO] Found ${states.length} entities with states`);
     }
-    
+
     // Combine registry and state info
     const entities = [];
     for (const [entityId, registryEntry] of registryMap) {
@@ -137,25 +137,25 @@ async function main() {
           state: state.state,
           attributes: state.attributes,
           last_changed: state.last_changed,
-          last_updated: state.last_updated
+          last_updated: state.last_updated,
         });
       }
     }
-    
+
     // Group entities by friendly name
     const entitiesByName = {};
     let entitiesWithFriendlyName = 0;
-    
+
     for (const entity of entities) {
       const friendlyName = entity.attributes?.friendly_name;
       if (friendlyName && typeof friendlyName === 'string' && friendlyName.trim()) {
         entitiesWithFriendlyName++;
         const normalizedName = friendlyName.trim();
-        
+
         if (!entitiesByName[normalizedName]) {
           entitiesByName[normalizedName] = [];
         }
-        
+
         entitiesByName[normalizedName].push({
           entity_id: entity.entity_id,
           friendly_name: friendlyName,
@@ -163,11 +163,11 @@ async function main() {
           domain: entity.entity_id.split('.')[0],
           area_id: entity.area_id,
           device_id: entity.device_id,
-          platform: entity.platform
+          platform: entity.platform,
         });
       }
     }
-    
+
     // Find duplicates (names with more than one entity)
     const duplicateGroups = [];
     for (const [friendlyName, entitiesList] of Object.entries(entitiesByName)) {
@@ -175,17 +175,17 @@ async function main() {
         duplicateGroups.push({
           friendly_name: friendlyName,
           count: entitiesList.length,
-          entities: entitiesList.sort((a, b) => a.entity_id.localeCompare(b.entity_id))
+          entities: entitiesList.sort((a, b) => a.entity_id.localeCompare(b.entity_id)),
         });
       }
     }
-    
+
     // Sort by count descending, then by name
     duplicateGroups.sort((a, b) => {
       if (b.count !== a.count) return b.count - a.count;
       return a.friendly_name.localeCompare(b.friendly_name);
     });
-    
+
     // Prepare result
     const result = {
       timestamp: new Date().toISOString(),
@@ -193,24 +193,25 @@ async function main() {
       entities_with_friendly_names: entitiesWithFriendlyName,
       duplicate_groups_found: duplicateGroups.length,
       duplicate_groups: duplicateGroups,
-      summary: duplicateGroups.length === 0 
-        ? "No duplicate friendly names found"
-        : `Found ${duplicateGroups.length} duplicate friendly name(s)`
+      summary:
+        duplicateGroups.length === 0
+          ? 'No duplicate friendly names found'
+          : `Found ${duplicateGroups.length} duplicate friendly name(s)`,
     };
-    
+
     // Output result
     if (jsonOutput) {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      console.log(`\n=== DUPLICATE FRIENDLY NAME REPORT ===\n`);
+      console.log('\n=== DUPLICATE FRIENDLY NAME REPORT ===\n');
       console.log(`Timestamp: ${result.timestamp}`);
       console.log(`Total entities: ${result.total_entities}`);
       console.log(`Entities with friendly names: ${result.entities_with_friendly_names}`);
       console.log(`Duplicate groups found: ${result.duplicate_groups_found}`);
       console.log(`\n${result.summary}\n`);
-      
+
       if (duplicateGroups.length > 0) {
-        console.log(`\n=== DETAILS ===\n`);
+        console.log('\n=== DETAILS ===\n');
         for (const group of duplicateGroups) {
           console.log(`"${group.friendly_name}" (${group.count} entities):`);
           for (const entity of group.entities) {
@@ -222,10 +223,9 @@ async function main() {
         }
       }
     }
-    
+
     // Exit with appropriate code
     process.exit(0);
-    
   } catch (error) {
     console.error(`[ERROR] ${error.message}`);
     if (verbose && error.stack) {

@@ -2,7 +2,7 @@
 
 /**
  * Shared logger utility for consistent timestamps, status labels, and stderr handling.
- * 
+ *
  * Features:
  * - Timestamps (ISO format or human-readable)
  * - Consistent status labels ([OK], [ERROR], [WARN], [INFO], [SUCCESS])
@@ -19,20 +19,20 @@
 const config = {
   // Enable color output (auto-detected from TTY)
   color: process.stdout.isTTY && !process.env.NO_COLOR,
-  
+
   // Include timestamps in logs
   timestamp: true,
-  
+
   // Timestamp format: 'iso' or 'human'
   timestampFormat: 'human',
-  
+
   // Output mode: 'text' or 'json'
   outputMode: 'text',
-  
+
   // Minimum log level to output
   // Levels: error, warn, info, success, debug
   minLevel: 'info',
-  
+
   // Prefix for status labels
   statusPrefix: true,
 };
@@ -42,18 +42,18 @@ const colors = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
-  
+
   // Status colors
-  error: '\x1b[31m',    // red
-  warn: '\x1b[33m',     // yellow
-  info: '\x1b[36m',     // cyan
-  success: '\x1b[32m',  // green
-  ok: '\x1b[32m',       // green
-  debug: '\x1b[90m',    // gray
-  
+  error: '\x1b[31m', // red
+  warn: '\x1b[33m', // yellow
+  info: '\x1b[36m', // cyan
+  success: '\x1b[32m', // green
+  ok: '\x1b[32m', // green
+  debug: '\x1b[90m', // gray
+
   // Text colors
   timestamp: '\x1b[90m', // gray
-  label: '\x1b[1m',      // bold
+  label: '\x1b[1m', // bold
 };
 
 // Level priorities (higher = more important)
@@ -73,20 +73,20 @@ const levelPriority = {
  */
 function getTimestamp(format = config.timestampFormat) {
   const now = new Date();
-  
+
   if (format === 'iso') {
     return now.toISOString();
   }
-  
+
   // Human-readable format: YYYY-MM-DD HH:MM:SS
-  const pad = (n) => n.toString().padStart(2, '0');
+  const pad = n => n.toString().padStart(2, '0');
   const year = now.getFullYear();
   const month = pad(now.getMonth() + 1);
   const day = pad(now.getDate());
   const hours = pad(now.getHours());
   const minutes = pad(now.getMinutes());
   const seconds = pad(now.getSeconds());
-  
+
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
@@ -100,7 +100,7 @@ function formatLabel(label, level) {
   if (!config.color) {
     return `[${label}]`;
   }
-  
+
   const color = colors[level] || colors.info;
   return `${color}[${label}]${colors.reset}`;
 }
@@ -114,7 +114,7 @@ function formatLabel(label, level) {
  */
 function formatMessage(message, level, label = null) {
   const parts = [];
-  
+
   // Add timestamp if enabled
   if (config.timestamp) {
     const timestamp = getTimestamp();
@@ -124,16 +124,16 @@ function formatMessage(message, level, label = null) {
       parts.push(timestamp);
     }
   }
-  
+
   // Add status label if enabled
   if (config.statusPrefix) {
     const statusLabel = label || level.toUpperCase();
     parts.push(formatLabel(statusLabel, level));
   }
-  
+
   // Add the message
   parts.push(message);
-  
+
   return parts.join(' ');
 }
 
@@ -145,25 +145,24 @@ function formatMessage(message, level, label = null) {
  */
 function log(level, message, options = {}) {
   const { label = null, jsonOutput = false, forceStdout = false } = options;
-  
+
   // Check if this level should be logged
   const priority = levelPriority[level] || 2;
   const minPriority = levelPriority[config.minLevel] || 2;
-  
+
   if (priority < minPriority) {
     return;
   }
-  
+
   // If in JSON output mode, messages are handled differently
   if (jsonOutput && config.outputMode === 'json') {
     return;
   }
-  
+
   const formatted = formatMessage(message, level, label);
-  const stream = (level === 'error' || level === 'warn') && !forceStdout 
-    ? process.stderr 
-    : process.stdout;
-  
+  const stream =
+    (level === 'error' || level === 'warn') && !forceStdout ? process.stderr : process.stdout;
+
   stream.write(formatted + '\n');
 }
 
@@ -227,7 +226,7 @@ export function debug(message, options = {}) {
  */
 export function configure(newConfig) {
   Object.assign(config, newConfig);
-  
+
   // Disable color if NO_COLOR env var is set
   if (process.env.NO_COLOR) {
     config.color = false;
@@ -243,7 +242,7 @@ export function progress(message) {
   const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   let frameIndex = 0;
   let intervalId = null;
-  
+
   const start = () => {
     if (config.color && process.stdout.isTTY) {
       intervalId = setInterval(() => {
@@ -254,16 +253,16 @@ export function progress(message) {
       process.stdout.write(`${message}... `);
     }
   };
-  
-  const update = (newMessage) => {
+
+  const update = newMessage => {
     message = newMessage;
   };
-  
+
   const stop = (finalMessage = '', success = true) => {
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
-      
+
       if (config.color && process.stdout.isTTY) {
         const status = success ? '✓' : '✗';
         const color = success ? colors.success : colors.error;
@@ -277,9 +276,9 @@ export function progress(message) {
       process.stdout.write(`${status} ${finalMessage || message}\n`);
     }
   };
-  
+
   start();
-  
+
   return { update, stop };
 }
 

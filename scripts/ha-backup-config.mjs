@@ -2,7 +2,7 @@
 
 /**
  * Backup critical Home Assistant configuration files and data before mutating actions.
- * 
+ *
  * This script exports configuration via Home Assistant API to a timestamped backup directory.
  * Useful to run before making changes that could potentially break the system.
  *
@@ -14,7 +14,6 @@ import { loadEnvFile, requireKeys } from './_env.mjs';
 import logger from './_logger.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 
 // Configure logger for this script
 logger.configure({
@@ -56,12 +55,12 @@ function parseArgs() {
     dryRun: false,
     outputDir: null,
     help: false,
-    jsonOutput: false
+    jsonOutput: false,
   };
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
+
     if (arg === '--dry-run') {
       options.dryRun = true;
     } else if (arg === '--json') {
@@ -108,7 +107,7 @@ async function fetchWithAuth(url, token, options = {}) {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...options.headers,
     },
@@ -124,57 +123,58 @@ async function fetchWithAuth(url, token, options = {}) {
 async function runBackup(env, options) {
   const timestamp = generateTimestamp();
   const outputDir = options.outputDir || process.cwd();
-  const backupDir = options.dryRun ? null : 
-    ensureDirectory(path.join(outputDir, `ha-backup-${timestamp}`));
+  const backupDir = options.dryRun
+    ? null
+    : ensureDirectory(path.join(outputDir, `ha-backup-${timestamp}`));
 
   if (!options.jsonOutput) {
     logger.info(`Starting backup to: ${backupDir || '(dry-run) would create backup directory'}`);
   }
-  
+
   const baseUrl = env.HA_BASE_URL;
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;
-  
+
   const endpoints = [
     {
       name: 'config',
       url: `${baseUrl}/api/config`,
-      filename: 'config.json'
+      filename: 'config.json',
     },
     {
       name: 'entity_registry',
       url: `${baseUrl}/api/config/entity_registry/list`,
-      filename: 'entity_registry.json'
+      filename: 'entity_registry.json',
     },
     {
       name: 'device_registry',
       url: `${baseUrl}/api/config/device_registry/list`,
-      filename: 'device_registry.json'
+      filename: 'device_registry.json',
     },
     {
       name: 'area_registry',
       url: `${baseUrl}/api/config/area_registry/list`,
-      filename: 'area_registry.json'
+      filename: 'area_registry.json',
     },
     {
       name: 'automations',
       url: `${baseUrl}/api/config/automation/config`,
-      filename: 'automations.json'
+      filename: 'automations.json',
     },
     {
       name: 'scripts',
       url: `${baseUrl}/api/config/script/config`,
-      filename: 'scripts.json'
+      filename: 'scripts.json',
     },
     {
       name: 'scenes',
       url: `${baseUrl}/api/config/scene/config`,
-      filename: 'scenes.json'
+      filename: 'scenes.json',
     },
     {
       name: 'blueprints',
       url: `${baseUrl}/api/blueprint/list`,
-      filename: 'blueprints.json'
-    }
+      filename: 'blueprints.json',
+    },
   ];
 
   const results = [];
@@ -184,48 +184,48 @@ async function runBackup(env, options) {
       if (!options.jsonOutput) {
         logger.info(`Backing up ${endpoint.name}...`);
       }
-      
+
       if (options.dryRun) {
         if (!options.jsonOutput) {
           logger.info(`Would fetch: ${endpoint.url}`, { label: 'DRY-RUN' });
         }
-        results.push({ 
-          endpoint: endpoint.name, 
-          success: true, 
+        results.push({
+          endpoint: endpoint.name,
+          success: true,
           status: 'dry-run',
           url: endpoint.url,
-          filename: endpoint.filename
+          filename: endpoint.filename,
         });
         continue;
       }
 
       const response = await fetchWithAuth(endpoint.url, token);
       const data = await response.json();
-      
+
       const outputPath = path.join(backupDir, endpoint.filename);
       fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
-      
+
       if (!options.jsonOutput) {
         logger.ok(`Saved to: ${endpoint.filename}`);
       }
-      results.push({ 
-        endpoint: endpoint.name, 
-        success: true, 
+      results.push({
+        endpoint: endpoint.name,
+        success: true,
         size: JSON.stringify(data).length,
         url: endpoint.url,
         filename: endpoint.filename,
-        path: outputPath
+        path: outputPath,
       });
     } catch (error) {
       if (!options.jsonOutput) {
         logger.error(`Failed to backup ${endpoint.name}: ${error.message}`);
       }
-      results.push({ 
-        endpoint: endpoint.name, 
-        success: false, 
+      results.push({
+        endpoint: endpoint.name,
+        success: false,
         error: error.message,
         url: endpoint.url,
-        filename: endpoint.filename
+        filename: endpoint.filename,
       });
     }
   }
@@ -265,17 +265,17 @@ async function runBackup(env, options) {
       summaryPath: summaryPath,
       parameters: {
         outputDir: outputDir,
-        haBaseUrl: baseUrl
+        haBaseUrl: baseUrl,
       },
       statistics: {
         totalEndpoints: endpoints.length,
         successful: successful,
-        failed: failed
+        failed: failed,
       },
-      results: results
+      results: results,
     };
     logger.json(jsonOutput);
-    
+
     // Exit with error code if any backups failed
     if (failed > 0) {
       process.exit(1);
@@ -288,14 +288,16 @@ async function runBackup(env, options) {
   logger.info(`Total endpoints: ${endpoints.length}`, { statusPrefix: false });
   logger.info(`Successful: ${successful}`, { statusPrefix: false });
   logger.info(`Failed: ${failed}`, { statusPrefix: false });
-  
+
   if (failed > 0) {
     logger.info('\nFailed endpoints:', { statusPrefix: false });
-    results.filter(r => !r.success).forEach(r => {
-      logger.info(`  - ${r.endpoint}: ${r.error}`, { statusPrefix: false });
-    });
+    results
+      .filter(r => !r.success)
+      .forEach(r => {
+        logger.info(`  - ${r.endpoint}: ${r.error}`, { statusPrefix: false });
+      });
     if (!options.dryRun) {
-      logger.warn(`Some backups failed. Check backup-summary.json for details.`);
+      logger.warn('Some backups failed. Check backup-summary.json for details.');
     }
   }
 
