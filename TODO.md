@@ -29,7 +29,7 @@ Pick one small item per run; keep commits focused.
 ✅ Add scripts/ha-unused-helpers-report.mjs to identify stale helpers/entities.
 ✅ Add tests for argument parsing and failure paths in core scripts.
 ✅ Add CI check for formatting/linting.
-Add CONTRIBUTING.md with script conventions and safety rules.
+✅ Add CONTRIBUTING.md with script conventions and safety rules.
 
 ## Housekeeping
 Standardize script output and exit codes.
