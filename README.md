@@ -41,6 +41,20 @@ These scripts:
 - do **not** commit secrets
 - default to **dry-run** where appropriate
 
+## Exit Codes
+
+All scripts follow consistent exit codes as defined in [CONTRIBUTING.md](CONTRIBUTING.md#exit-codes):
+
+| Code | Meaning | Usage |
+|------|---------|-------|
+| 0 | Success | Script completed successfully |
+| 1 | General error | Unspecified failure |
+| 2 | Invalid arguments | Missing or incorrect command-line arguments |
+| 3 | Configuration error | Missing env vars, invalid credentials |
+| 4 | API/network error | HA API unreachable or returned error |
+| 5 | Operation failed | Specific operation (rename, update, etc.) failed |
+| 6 | Dry-run mode | Script ran in dry-run mode (successful preview) |
+
 ## License
 
 MIT
