@@ -35,5 +35,5 @@ Pick one small item per run; keep commits focused.
 Standardize script output and exit codes.
 Ensure scripts never print secrets.
 ✅ Document exit code meanings in README.
-Centralize env loading and validation in one shared helper.
+✅ Centralize env loading and validation in one shared helper.
 Normalize error messages to include action, target, and suggested rollback.

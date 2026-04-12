@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadEnvFile, requireKeys } from './_env.mjs';
+import { getValidatedEnv } from './_env.mjs';
 
 function printHelp() {
   console.log(`Usage: node ha-entity-rename.mjs --from <old_entity> --to <new_entity> [options]
@@ -185,8 +185,11 @@ async function main() {
     process.exit(1);
   }
 
-  const env = loadEnvFile(process.env.HA_ENV_FILE);
-  requireKeys(env, ['HA_BASE_URL', 'HA_LONG_LIVED_ACCESS_TOKEN']);
+  // Load and validate environment
+  const env = getValidatedEnv({
+    envFile: process.env.HA_ENV_FILE,
+    requiredKeys: ['HA_BASE_URL', 'HA_LONG_LIVED_ACCESS_TOKEN']
+  });
 
   const baseUrl = env.HA_BASE_URL.replace(/\/$/, '');
   const token = env.HA_LONG_LIVED_ACCESS_TOKEN;

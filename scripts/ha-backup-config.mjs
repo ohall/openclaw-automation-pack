@@ -10,7 +10,7 @@
  *   node scripts/ha-backup-config.mjs [--dry-run] [--output-dir <path>] [--json] [--help]
  */
 
-import { loadEnvFile, requireKeys } from './_env.mjs';
+import { getValidatedEnv } from './_env.mjs';
 import logger from './_logger.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -325,9 +325,11 @@ async function main() {
     return;
   }
 
-  // Load environment
-  const env = loadEnvFile(process.env.HA_ENV_FILE);
-  requireKeys(env, ['HA_BASE_URL', 'HA_LONG_LIVED_ACCESS_TOKEN']);
+  // Load and validate environment
+  const env = getValidatedEnv({
+    envFile: process.env.HA_ENV_FILE,
+    requiredKeys: ['HA_BASE_URL', 'HA_LONG_LIVED_ACCESS_TOKEN']
+  });
 
   try {
     await runBackup(env, options);
