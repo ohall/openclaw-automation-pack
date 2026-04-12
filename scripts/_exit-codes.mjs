@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import path from 'node:path';
+import { safeStringify } from './_sanitize.mjs';
 
 /**
  * Standardized exit codes and error message formatting for automation scripts.
@@ -104,11 +105,11 @@ export function exitWithError({
         action,
         target,
         rollback,
-        details,
+        details: details ? safeStringify(details, null, 2, ['token', 'password', 'secret', 'key']) : null,
         code,
       },
     };
-    console.error(JSON.stringify(errorObj, null, 2));
+    console.error(safeStringify(errorObj));
   } else {
     console.error(errorMessage);
   }
