@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getValidatedEnv } from './_env.mjs';
+import { ExitCodes, exitWithError, exitWithSuccess, exitWithDryRun } from './_exit-codes.mjs';
 
 function printHelp() {
   console.log(`Usage: node ha-entity-rename.mjs --from <old_entity> --to <new_entity> [options]
@@ -320,8 +321,7 @@ async function main() {
       dryRun,
       jsonOutput
     );
-
-    if (jsonOutput) {
+if (jsonOutput) {
       const result = {
         timestamp: new Date().toISOString(),
         action: 'entity-rename',
@@ -342,40 +342,48 @@ async function main() {
         rename: renameResult,
       };
       console.log(JSON.stringify(result, null, 2));
+      process.exit(ExitCodes.SUCCESS);
     } else {
       if (dryRun) {
-        console.log('\n[DRY-RUN] No changes made. Remove --dry-run to apply changes.');
+        exitWithDryRun({
+          message: `Entity rename from ${fromEntity} to ${toEntity} would be performed`,
+          plan: [
+            `Backup entity registry to ${backupResult?.path || backupDir}`,
+            `Rename entity: ${fromEntity} → ${toEntity}`,
+            'Note: Home Assistant restart may be required for changes to take full effect',
+          ],
+          json: jsonOutput,
+        });
       } else {
-        console.log('\n[SUCCESS] Entity rename completed successfully.');
-        console.log(
-          '[NOTE] You may need to restart Home Assistant for all changes to take effect.'
-        );
+        exitWithSuccess({
+          message: `Entity renamed from ${fromEntity} to ${toEntity} successfully`,
+          data: {
+            note: 'Home Assistant restart may be required for changes to take full effect',
+            backup: backupResult?.path,
+          },
+          json: jsonOutput,
+        });
       }
     }
   } catch (error) {
-    if (jsonOutput) {
-      console.log(
-        JSON.stringify(
-          {
-            timestamp: new Date().toISOString(),
-            action: 'entity-rename',
-            success: false,
-            error: error.message,
-            parameters: { from: fromEntity, to: toEntity, dryRun, backupDir },
-          },
-          null,
-          2
-        )
-      );
-      process.exit(1);
-    } else {
-      console.error(`[ERROR] ${error.message}`);
-      process.exit(1);
-    }
+    exitWithError({
+      action: 'rename entity',
+      target: `${fromEntity} -> ${toEntity}`,
+      rollback: dryRun ? 'No changes were made (dry run)' : `Check backup at ${backupResult?.path || backupDir} for recovery`,
+      details: error.message,
+      code: ExitCodes.OPERATION_FAILED,
+      json: jsonOutput,
+    });
   }
 }
 
 main().catch(e => {
-  console.error(e?.stack || String(e));
-  process.exit(1);
+  exitWithError({
+    action: 'run entity rename script',
+    target: 'script execution',
+    rollback: 'No changes were made',
+    details: e?.stack || String(e),
+    code: ExitCodes.GENERAL_ERROR,
+    json: false,
+  });
 });

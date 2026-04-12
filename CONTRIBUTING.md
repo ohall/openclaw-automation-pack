@@ -72,17 +72,22 @@ for (let i = 2; i < process.argv.length; i++) {
 
 ### Exit Codes
 
-Use these exit codes consistently:
+Use these exit codes consistently (defined in `_exit-codes.mjs`):
 
-| Code | Meaning | Usage |
-|------|---------|-------|
-| 0 | Success | Script completed successfully |
-| 1 | General error | Unspecified failure |
-| 2 | Invalid arguments | Missing or incorrect command-line arguments |
-| 3 | Configuration error | Missing env vars, invalid credentials |
-| 4 | API/network error | HA API unreachable or returned error |
-| 5 | Operation failed | Specific operation (rename, update, etc.) failed |
-| 6 | Dry-run mode | Script ran in dry-run mode (successful preview) |
+| Code | Constant | Meaning | Usage |
+|------|----------|---------|-------|
+| 0 | `SUCCESS` | Success | Script completed successfully |
+| 1 | `GENERAL_ERROR` | General error | Unspecified failure |
+| 2 | `USAGE_ERROR` | Invalid arguments | Missing or incorrect command-line arguments |
+| 3 | `CONFIG_ERROR` | Configuration error | Missing env vars, invalid credentials |
+| 4 | `OPERATION_FAILED` | API/network error | HA API unreachable or returned error |
+| 5 | `VALIDATION_FAILED` | Validation failed | Precondition check or validation failed |
+| 6 | `TIMEOUT` | Timeout | Operation timed out |
+| 7 | `AUTH_ERROR` | Authentication error | Permission or authentication failure |
+| 8 | `DRY_RUN` | Dry-run mode | Script ran in dry-run mode (successful preview) |
+| 9 | `PARTIAL_SUCCESS` | Partial success | Some operations succeeded, others failed |
+
+**Note:** Always import and use the constants from `_exit-codes.mjs` rather than hardcoding numbers.
 
 ### Environment Configuration
 
