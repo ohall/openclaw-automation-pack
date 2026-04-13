@@ -59,21 +59,21 @@ export function formatErrorMessage({
   script = process.argv[1] ? path.basename(process.argv[1]) : 'script',
 }) {
   const parts = [`[ERROR] Action: ${action}`];
-  
+
   if (target) {
     parts.push(`  Target: ${target}`);
   }
-  
+
   if (rollback) {
     parts.push(`  Rollback: ${rollback}`);
   }
-  
+
   if (details) {
     parts.push(`  Details: ${details}`);
   }
-  
+
   parts.push(`  Script: ${script}`);
-  
+
   return parts.join('\n');
 }
 
@@ -96,7 +96,7 @@ export function exitWithError({
   json = false,
 }) {
   const errorMessage = formatErrorMessage({ action, target, rollback, details });
-  
+
   if (json) {
     const errorObj = {
       timestamp: new Date().toISOString(),
@@ -113,7 +113,7 @@ export function exitWithError({
   } else {
     console.error(errorMessage);
   }
-  
+
   process.exit(code);
 }
 
@@ -140,7 +140,7 @@ export function exitWithSuccess({
   } else {
     console.log(`[SUCCESS] ${message}`);
   }
-  
+
   process.exit(ExitCodes.SUCCESS);
 }
 
@@ -178,7 +178,7 @@ export function exitWithDryRun({
       }
     }
   }
-  
+
   process.exit(ExitCodes.DRY_RUN);
 }
 

@@ -132,6 +132,7 @@ async function main() {
   let jsonOutput = false;
   let yesFlag = false;
   let forceFlag = false;
+  let backupResult = null;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -306,7 +307,6 @@ async function main() {
       console.log(`[INFO] Name: ${sourceEntity.name || 'None'}`);
     }
 
-    let backupResult = null;
     if (!dryRun) {
       // Create backup before making changes
       backupResult = await createBackup(baseUrl, token, backupDir, jsonOutput);

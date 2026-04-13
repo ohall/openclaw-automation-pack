@@ -2,7 +2,7 @@
 
 /**
  * Sanitization utility to prevent secret leakage in logs.
- * 
+ *
  * This module provides functions to sanitize strings and objects
  * before logging to ensure secrets (tokens, passwords, keys) are not exposed.
  */
@@ -14,7 +14,7 @@ const SECRET_PATTERNS = [
   // API tokens and keys with key=value pattern
   /\b(?:access[_-]?token|api[_-]?key|auth[_-]?token|bearer)\s*[:=]\s*['"]?([a-zA-Z0-9._~+/-]+=*)['"]?/gi,
   /\b(?:password|passwd|pwd|secret|key)\s*[:=]\s*['"]?([^'"\s]+)['"]?/gi,
-  
+
   // Common token formats (JWT, etc.) - standalone
   /\b(eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)\b/g, // JWT tokens
   /\b([a-f0-9]{32,})\b/gi, // Hex tokens (32+ chars)
@@ -39,9 +39,9 @@ function maskSecret(value) {
  */
 export function sanitizeString(text) {
   if (typeof text !== 'string') return text;
-  
+
   let sanitized = text;
-  
+
   // Replace secrets in the text
   for (const pattern of SECRET_PATTERNS) {
     sanitized = sanitized.replace(pattern, (match, secret) => {
@@ -50,7 +50,7 @@ export function sanitizeString(text) {
       return `${prefix}${maskSecret(secret)}`;
     });
   }
-  
+
   return sanitized;
 }
 
@@ -61,24 +61,24 @@ export function sanitizeString(text) {
  */
 export function sanitizeError(error) {
   if (!error) return error;
-  
+
   // Create a sanitized copy
   const sanitized = {
     name: error.name,
     message: sanitizeString(error.message),
   };
-  
+
   // Copy stack trace but sanitize it
   if (error.stack) {
     sanitized.stack = sanitizeString(error.stack);
   }
-  
+
   // Copy other properties (excluding potentially sensitive ones)
   const sensitiveProps = ['config', 'request', 'response', 'headers', 'auth', 'token', 'password', 'secret', 'key'];
-  
+
   for (const [key, value] of Object.entries(error)) {
     if (key === 'name' || key === 'message' || key === 'stack') continue;
-    
+
     if (sensitiveProps.includes(key.toLowerCase())) {
       sanitized[key] = '***REDACTED***';
     } else if (typeof value === 'string') {
@@ -90,7 +90,7 @@ export function sanitizeError(error) {
       sanitized[key] = value;
     }
   }
-  
+
   return sanitized;
 }
 
@@ -102,19 +102,19 @@ export function sanitizeError(error) {
  */
 export function sanitizeObject(obj, sensitiveKeys = []) {
   if (!obj || typeof obj !== 'object') return obj;
-  
+
   const allSensitiveKeys = [
     'token', 'access_token', 'api_key', 'auth_token', 'bearer',
     'password', 'passwd', 'pwd', 'secret', 'key',
     'authorization', 'x-api-key', 'x-auth-token',
     ...sensitiveKeys.map(k => k.toLowerCase())
   ];
-  
+
   const sanitized = Array.isArray(obj) ? [] : {};
-  
+
   for (const [key, value] of Object.entries(obj)) {
     const keyLower = key.toLowerCase();
-    
+
     // Check if this key should be treated as sensitive
     if (allSensitiveKeys.some(sk => keyLower.includes(sk))) {
       if (typeof value === 'string' && value.length > 0) {
@@ -131,7 +131,7 @@ export function sanitizeObject(obj, sensitiveKeys = []) {
       sanitized[key] = value;
     }
   }
-  
+
   return sanitized;
 }
 
@@ -145,7 +145,7 @@ export function sanitizeObject(obj, sensitiveKeys = []) {
  */
 export function safeStringify(value, replacer = null, space = 2, sensitiveKeys = []) {
   let sanitizedValue = value;
-  
+
   if (typeof value === 'object' && value !== null) {
     if (value instanceof Error) {
       sanitizedValue = sanitizeError(value);
@@ -155,7 +155,7 @@ export function safeStringify(value, replacer = null, space = 2, sensitiveKeys =
   } else if (typeof value === 'string') {
     sanitizedValue = sanitizeString(value);
   }
-  
+
   return JSON.stringify(sanitizedValue, replacer, space);
 }
 
@@ -165,7 +165,7 @@ export function safeStringify(value, replacer = null, space = 2, sensitiveKeys =
  */
 export function createSafeConsole() {
   const safeMethods = {};
-  
+
   ['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
     safeMethods[method] = (...args) => {
       const sanitizedArgs = args.map(arg => {
@@ -179,16 +179,16 @@ export function createSafeConsole() {
         }
         return arg;
       });
-      
+
       console[method](...sanitizedArgs);
     };
   });
-  
+
   // Special method for JSON output
   safeMethods.json = (obj, space = 2) => {
     console.log(safeStringify(obj, null, space));
   };
-  
+
   return safeMethods;
 }
 
@@ -199,7 +199,7 @@ export function createSafeConsole() {
  */
 export function wrapLogger(logger) {
   const wrapped = { ...logger };
-  
+
   const methods = ['error', 'warn', 'info', 'debug', 'success', 'ok', 'json'];
   methods.forEach(method => {
     if (typeof logger[method] === 'function') {
@@ -216,12 +216,12 @@ export function wrapLogger(logger) {
           }
           return arg;
         });
-        
+
         return original(...sanitizedArgs);
       };
     }
   });
-  
+
   return wrapped;
 }
 

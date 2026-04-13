@@ -43,13 +43,13 @@ function loadEnvFromFile(filePath) {
       console.error(`[ERROR] Environment file not found: ${filePath}`);
       process.exit(2);
     }
-    
+
     const stats = fs.statSync(filePath);
     if (stats.size === 0) {
       console.error(`[ERROR] Environment file is empty: ${filePath}`);
       process.exit(2);
     }
-    
+
     const out = {};
     const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
 
@@ -114,20 +114,20 @@ export function getValidatedEnv(options = {}) {
     requiredKeys = ['HA_BASE_URL', 'HA_LONG_LIVED_ACCESS_TOKEN'],
     defaults = {}
   } = options;
-  
+
   // Load environment
   const env = loadEnvFile(envFile);
-  
+
   // Apply defaults for missing optional keys
   for (const [key, value] of Object.entries(defaults)) {
     if (!(key in env)) {
       env[key] = value;
     }
   }
-  
+
   // Validate required keys
   requireKeys(env, requiredKeys);
-  
+
   return env;
 }
 
